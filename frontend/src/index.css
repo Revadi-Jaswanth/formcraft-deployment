@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: "Inter", system-ui, sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface-950 text-slate-100 antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-800 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-600;
+  }
+}
+
+@layer components {
+  /* ── Buttons ─────────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+           transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2
+           focus:ring-offset-surface-950 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 hover:bg-brand-500 text-white focus:ring-brand-500
+           shadow-sm hover:shadow-glow active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply btn bg-surface-800 hover:bg-surface-700 text-slate-200 focus:ring-slate-500
+           border border-surface-700 hover:border-slate-600;
+  }
+  .btn-danger {
+    @apply btn bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30
+           focus:ring-red-500;
+  }
+  .btn-ghost {
+    @apply btn hover:bg-surface-800 text-slate-400 hover:text-slate-200;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+  .btn-icon {
+    @apply p-2 rounded-lg hover:bg-surface-800 text-slate-400 hover:text-slate-200
+           transition-colors duration-150;
+  }
+
+  /* ── Cards ───────────────────────────────────────────────────── */
+  .card {
+    @apply bg-surface-900 rounded-xl border border-surface-800 shadow-card;
+  }
+  .card-hover {
+    @apply card hover:border-brand-600/50 hover:shadow-card-hover transition-all duration-200
+           cursor-pointer;
+  }
+
+  /* ── Form inputs ─────────────────────────────────────────────── */
+  .input {
+    @apply w-full px-3 py-2 bg-surface-900 border border-surface-700 rounded-lg text-sm
+           text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2
+           focus:ring-brand-500 focus:border-transparent transition-all duration-150;
+  }
+  .input-error {
+    @apply border-red-500 focus:ring-red-500;
+  }
+  .label {
+    @apply block text-sm font-medium text-slate-300 mb-1;
+  }
+  .select {
+    @apply input cursor-pointer;
+  }
+  .textarea {
+    @apply input resize-none;
+  }
+  .checkbox {
+    @apply rounded border-surface-600 bg-surface-800 text-brand-600
+           focus:ring-brand-500 focus:ring-offset-surface-950;
+  }
+
+  /* ── Badges ─────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-draft {
+    @apply badge bg-slate-700/50 text-slate-300 border border-slate-600/50;
+  }
+  .badge-published {
+    @apply badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/30;
+  }
+  .badge-archived {
+    @apply badge bg-orange-500/15 text-orange-400 border border-orange-500/30;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  .sidebar {
+    @apply w-64 shrink-0 bg-surface-900 border-r border-surface-800 h-screen flex flex-col;
+  }
+  .topbar {
+    @apply h-16 bg-surface-900 border-b border-surface-800 flex items-center px-6 gap-4;
+  }
+  .page-content {
+    @apply flex-1 overflow-auto p-6;
+  }
+
+  /* ── Field drag handle ───────────────────────────────────────── */
+  .drag-handle {
+    @apply cursor-grab active:cursor-grabbing text-slate-600 hover:text-slate-400
+           transition-colors;
+  }
+
+  /* ── Field type pill ─────────────────────────────────────────── */
+  .field-type-pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono
+           bg-brand-600/15 text-brand-400 border border-brand-600/30;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply backdrop-blur-sm bg-white/5 border border-white/10;
+  }
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-400 to-violet-400 bg-clip-text text-transparent;
+  }
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
