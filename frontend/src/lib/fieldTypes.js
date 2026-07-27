@@ -64,6 +64,14 @@ export const FIELD_TYPES = [
     defaultConfig: { allow_other: false, searchable: false, multiple: false },
   },
   {
+    type: "radio",
+    label: "Radio Buttons",
+    icon: CheckSquare,
+    description: "Single-select radio list",
+    color: "text-purple-400",
+    defaultConfig: { allow_other: false },
+  },
+  {
     type: "multi_checkbox",
     label: "Checkboxes",
     icon: CheckSquare,

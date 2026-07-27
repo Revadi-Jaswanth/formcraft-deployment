@@ -3,7 +3,7 @@ Submission Pydantic schemas.
 """
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
@@ -51,7 +51,48 @@ class SubmissionResponse(BaseModel):
     response_values: List[ResponseValueResponse] = []
 
 
+class SubmissionSummary(BaseModel):
+    form_title: str
+    fields_answered: int
+
+
 class SubmissionCreateResponse(BaseModel):
-    """Minimal response returned after a successful form submission."""
-    submission_id: UUID
+    """Enriched response returned after a successful form submission."""
+    response_id: UUID
+    submitted_at: datetime
+    summary: SubmissionSummary
     message: str = "Your response has been recorded. Thank you!"
+
+    # Alias for backward compatibility
+    @property
+    def submission_id(self) -> UUID:
+        return self.response_id
+
+
+class FileUploadResponse(BaseModel):
+    """Response returned after uploading a file."""
+    file_id: str
+    filename: str
+    file_url: str
+    file_path: str
+    size_bytes: int
+
+
+# ── Rule evaluation request/response (Milestone 2) ───────────────────────────
+
+class EvaluateRulesRequest(BaseModel):
+    """POST /public/forms/{token}/evaluate — evaluate rules client-side during form fill."""
+    responses: List[ResponseValueCreate] = Field(default_factory=list)
+
+
+class FieldStateResponse(BaseModel):
+    """Resolved state of a single field after rule evaluation."""
+    field_id: UUID
+    visible: bool
+    required: bool
+    disabled: bool
+
+
+class EvaluateRulesResponse(BaseModel):
+    """Result of evaluating all conditional rules for a form submission."""
+    field_states: List[FieldStateResponse]

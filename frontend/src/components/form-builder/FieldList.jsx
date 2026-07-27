@@ -1,5 +1,6 @@
 /**
  * Form Builder — Center panel: drag-and-drop field list using dnd-kit.
+ * Module 2: each field card now shows a LogicBadge if it participates in rules.
  */
 import { useState } from "react";
 import {
@@ -18,12 +19,20 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, Settings, Star, Hash, Type, AlignLeft, Mail, Phone, ChevronDown, CheckSquare, Calendar, Upload } from "lucide-react";
+import { GripVertical, Trash2, Settings, Type } from "lucide-react";
 import { useDeleteField, useReorderFields } from "@/hooks/useFields";
 import { getFieldIcon, getFieldColor, getFieldLabel } from "@/lib/fieldTypes";
+import LogicBadge from "@/components/form-builder/LogicBadge";
 
-export default function FieldList({ formId, fields, selectedField, onSelectField }) {
-  const deleteMutation = useDeleteField(formId);
+/**
+ * @param {string}   formId
+ * @param {object[]} fields
+ * @param {object}   selectedField
+ * @param {function} onSelectField
+ * @param {object[]} rules          - All rules for this form (from useRules)
+ */
+export default function FieldList({ formId, fields, selectedField, onSelectField, rules = [] }) {
+  const deleteMutation  = useDeleteField(formId);
   const reorderMutation = useReorderFields(formId);
 
   const sensors = useSensors(
@@ -81,6 +90,7 @@ export default function FieldList({ formId, fields, selectedField, onSelectField
               field={field}
               index={index}
               isSelected={selectedField?.id === field.id}
+              rules={rules}
               onSelect={() => onSelectField(field)}
               onDelete={() => {
                 if (confirm(`Delete "${field.label}"?`)) {
@@ -96,7 +106,7 @@ export default function FieldList({ formId, fields, selectedField, onSelectField
   );
 }
 
-function SortableFieldRow({ field, index, isSelected, onSelect, onDelete }) {
+function SortableFieldRow({ field, index, isSelected, onSelect, onDelete, rules }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: field.id });
 
@@ -106,7 +116,7 @@ function SortableFieldRow({ field, index, isSelected, onSelect, onDelete }) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const Icon = getFieldIcon(field.field_type);
+  const Icon  = getFieldIcon(field.field_type);
   const color = getFieldColor(field.field_type);
 
   return (
@@ -128,7 +138,7 @@ function SortableFieldRow({ field, index, isSelected, onSelect, onDelete }) {
         {...listeners}
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical className="w-4 h-4" />
+        <GripVertical className="w-4 h-4 text-slate-600" />
       </button>
 
       {/* Field icon */}
@@ -138,11 +148,13 @@ function SortableFieldRow({ field, index, isSelected, onSelect, onDelete }) {
 
       {/* Field info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-medium text-slate-200 truncate">{field.label}</p>
           {field.is_required && (
             <span className="text-red-400 text-xs font-medium shrink-0">Required</span>
           )}
+          {/* ⚡ Logic badge — Module 2 */}
+          <LogicBadge rules={rules} fieldId={field.id} />
         </div>
         <p className="text-xs text-slate-500">{getFieldLabel(field.field_type)}</p>
       </div>
@@ -158,6 +170,7 @@ function SortableFieldRow({ field, index, isSelected, onSelect, onDelete }) {
             e.stopPropagation();
             onSelect();
           }}
+          title="Configure field"
         >
           <Settings className="w-3.5 h-3.5" />
         </button>
@@ -167,6 +180,7 @@ function SortableFieldRow({ field, index, isSelected, onSelect, onDelete }) {
             e.stopPropagation();
             onDelete();
           }}
+          title="Delete field"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>

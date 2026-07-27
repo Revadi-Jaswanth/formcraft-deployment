@@ -35,19 +35,20 @@ class FormService:
 
     # ── Create ────────────────────────────────────────────────────────────────
 
-    def create_form(self, data: FormCreate) -> Form:
+    def create_form(self, data: FormCreate, user_id: Optional[UUID] = None) -> Form:
         form_dict = {
             "title": data.title,
             "description": data.description,
             "status": "draft",
             "settings": data.settings.model_dump(),
+            "created_by": user_id,
         }
         return self.form_repo.create(form_dict)
 
     # ── Read ──────────────────────────────────────────────────────────────────
 
-    def get_form_detail(self, form_id: UUID) -> Form:
-        form = self.form_repo.get_with_details(form_id)
+    def get_form_detail(self, form_id: UUID, user_id: Optional[UUID] = None) -> Form:
+        form = self.form_repo.get_with_details(form_id, user_id=user_id)
         if not form:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Form not found.")
         return form
@@ -58,8 +59,9 @@ class FormService:
         limit: int = 50,
         form_status: Optional[str] = None,
         search: Optional[str] = None,
+        user_id: Optional[UUID] = None,
     ) -> Tuple[List[Form], int]:
-        return self.form_repo.list_forms(skip=skip, limit=limit, status=form_status, search=search)
+        return self.form_repo.list_forms(skip=skip, limit=limit, status=form_status, search=search, user_id=user_id)
 
     def enrich_list_item(self, form: Form) -> dict:
         """Add computed fields (field_count, submission_count) to a form dict."""
@@ -79,8 +81,8 @@ class FormService:
 
     # ── Update ────────────────────────────────────────────────────────────────
 
-    def update_form(self, form_id: UUID, data: FormUpdate) -> Form:
-        form = self._get_editable_form(form_id)
+    def update_form(self, form_id: UUID, data: FormUpdate, user_id: Optional[UUID] = None) -> Form:
+        form = self._get_editable_form(form_id, user_id=user_id)
         update_dict = data.model_dump(exclude_unset=True)
         if "settings" in update_dict and update_dict["settings"]:
             # Merge settings (don't overwrite keys not passed)
@@ -91,8 +93,8 @@ class FormService:
 
     # ── Publish ───────────────────────────────────────────────────────────────
 
-    def publish_form(self, form_id: UUID, data: PublishFormRequest) -> Form:
-        form = self.form_repo.get_with_fields(form_id)
+    def publish_form(self, form_id: UUID, data: PublishFormRequest, user_id: Optional[UUID] = None) -> Form:
+        form = self.form_repo.get_with_fields(form_id, user_id=user_id)
         if not form:
             raise HTTPException(status_code=404, detail="Form not found.")
         if form.status == "archived":
@@ -133,12 +135,12 @@ class FormService:
 
         self.form_repo.db.commit()
         self.form_repo.db.refresh(form)
-        return self.form_repo.get_with_details(form_id)
+        return self.form_repo.get_with_details(form_id, user_id=user_id)
 
     # ── Archive / Restore ─────────────────────────────────────────────────────
 
-    def archive_form(self, form_id: UUID) -> Form:
-        form = self.form_repo.get(form_id)
+    def archive_form(self, form_id: UUID, user_id: Optional[UUID] = None) -> Form:
+        form = self.form_repo.get_with_details(form_id, user_id=user_id)
         if not form:
             raise HTTPException(status_code=404, detail="Form not found.")
         if form.status == "draft":
@@ -149,8 +151,8 @@ class FormService:
         form.status = "archived"
         return self.form_repo.save(form)
 
-    def restore_to_draft(self, form_id: UUID) -> Form:
-        form = self.form_repo.get(form_id)
+    def restore_to_draft(self, form_id: UUID, user_id: Optional[UUID] = None) -> Form:
+        form = self.form_repo.get_with_details(form_id, user_id=user_id)
         if not form:
             raise HTTPException(status_code=404, detail="Form not found.")
         if form.status != "archived":
@@ -160,8 +162,8 @@ class FormService:
 
     # ── Delete (soft) ─────────────────────────────────────────────────────────
 
-    def delete_form(self, form_id: UUID) -> None:
-        form = self.form_repo.get(form_id)
+    def delete_form(self, form_id: UUID, user_id: Optional[UUID] = None) -> None:
+        form = self.form_repo.get_with_details(form_id, user_id=user_id)
         if not form:
             raise HTTPException(status_code=404, detail="Form not found.")
         form.is_deleted = True
@@ -169,8 +171,8 @@ class FormService:
 
     # ── Duplicate ─────────────────────────────────────────────────────────────
 
-    def duplicate_form(self, form_id: UUID, data: DuplicateFormRequest) -> Form:
-        source = self.form_repo.get_with_fields(form_id)
+    def duplicate_form(self, form_id: UUID, data: DuplicateFormRequest, user_id: Optional[UUID] = None) -> Form:
+        source = self.form_repo.get_with_fields(form_id, user_id=user_id)
         if not source:
             raise HTTPException(status_code=404, detail="Form not found.")
 
@@ -179,6 +181,7 @@ class FormService:
             description=source.description,
             settings=dict(source.settings),
             status="draft",
+            created_by=user_id,
         )
         self.form_repo.db.add(new_form)
         self.form_repo.db.flush()
@@ -243,8 +246,8 @@ class FormService:
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
-    def _get_editable_form(self, form_id: UUID) -> Form:
-        form = self.form_repo.get(form_id)
+    def _get_editable_form(self, form_id: UUID, user_id: Optional[UUID] = None) -> Form:
+        form = self.form_repo.get_with_details(form_id, user_id=user_id)
         if not form:
             raise HTTPException(status_code=404, detail="Form not found.")
         if form.status == "archived":

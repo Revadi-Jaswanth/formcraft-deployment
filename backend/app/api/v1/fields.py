@@ -8,9 +8,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.deps import get_field_service, verify_api_key
+from app.api.deps import get_field_service, get_current_user, get_form_service
 from app.schemas.field import FieldCreate, FieldResponse, FieldUpdate, FieldReorderRequest
 from app.services.field_service import FieldService
+from app.services.form_service import FormService
+from app.models.user import User
 
 router = APIRouter(prefix="/forms/{form_id}/fields", tags=["Fields"])
 
@@ -19,12 +21,14 @@ router = APIRouter(prefix="/forms/{form_id}/fields", tags=["Fields"])
     "",
     response_model=List[FieldResponse],
     summary="List all fields for a form",
-    dependencies=[Depends(verify_api_key)],
 )
 def list_fields(
     form_id: UUID,
+    current_user: User = Depends(get_current_user),
     svc: FieldService = Depends(get_field_service),
+    form_svc: FormService = Depends(get_form_service),
 ) -> List[FieldResponse]:
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
     return [FieldResponse.model_validate(f) for f in svc.get_fields(form_id)]
 
 
@@ -33,13 +37,15 @@ def list_fields(
     response_model=FieldResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Add a field to a form",
-    dependencies=[Depends(verify_api_key)],
 )
 def add_field(
     form_id: UUID,
     body: FieldCreate,
+    current_user: User = Depends(get_current_user),
     svc: FieldService = Depends(get_field_service),
+    form_svc: FormService = Depends(get_form_service),
 ) -> FieldResponse:
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
     field = svc.add_field(form_id, body)
     return FieldResponse.model_validate(field)
 
@@ -49,13 +55,15 @@ def add_field(
     "/reorder",
     response_model=List[FieldResponse],
     summary="Reorder all fields — pass complete ordered list of field IDs",
-    dependencies=[Depends(verify_api_key)],
 )
 def reorder_fields(
     form_id: UUID,
     body: FieldReorderRequest,
+    current_user: User = Depends(get_current_user),
     svc: FieldService = Depends(get_field_service),
+    form_svc: FormService = Depends(get_form_service),
 ) -> List[FieldResponse]:
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
     fields = svc.reorder_fields(form_id, body)
     return [FieldResponse.model_validate(f) for f in fields]
 
@@ -64,13 +72,15 @@ def reorder_fields(
     "/{field_id}",
     response_model=FieldResponse,
     summary="Get a single field",
-    dependencies=[Depends(verify_api_key)],
 )
 def get_field(
     form_id: UUID,
     field_id: UUID,
+    current_user: User = Depends(get_current_user),
     svc: FieldService = Depends(get_field_service),
+    form_svc: FormService = Depends(get_form_service),
 ) -> FieldResponse:
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
     return FieldResponse.model_validate(svc.get_field(form_id, field_id))
 
 
@@ -78,14 +88,16 @@ def get_field(
     "/{field_id}",
     response_model=FieldResponse,
     summary="Update a field (config, label, options, etc.)",
-    dependencies=[Depends(verify_api_key)],
 )
 def update_field(
     form_id: UUID,
     field_id: UUID,
     body: FieldUpdate,
+    current_user: User = Depends(get_current_user),
     svc: FieldService = Depends(get_field_service),
+    form_svc: FormService = Depends(get_form_service),
 ) -> FieldResponse:
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
     field = svc.update_field(form_id, field_id, body)
     return FieldResponse.model_validate(field)
 
@@ -94,11 +106,13 @@ def update_field(
     "/{field_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a field (and its options/conditions)",
-    dependencies=[Depends(verify_api_key)],
 )
 def delete_field(
     form_id: UUID,
     field_id: UUID,
+    current_user: User = Depends(get_current_user),
     svc: FieldService = Depends(get_field_service),
+    form_svc: FormService = Depends(get_form_service),
 ) -> None:
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
     svc.delete_field(form_id, field_id)

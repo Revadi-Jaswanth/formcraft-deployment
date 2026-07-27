@@ -23,6 +23,7 @@ class FieldType(str, Enum):
     PHONE = "phone"
     DROPDOWN = "dropdown"
     MULTI_CHECKBOX = "multi_checkbox"
+    RADIO = "radio"
     DATE = "date"
     FILE_UPLOAD = "file_upload"
     RATING = "rating"
@@ -72,6 +73,10 @@ class MultiCheckboxConfig(BaseModel):
     allow_other: bool = False
 
 
+class RadioConfig(BaseModel):
+    allow_other: bool = False
+
+
 class DateConfig(BaseModel):
     min_date: Optional[str] = None   # ISO date string YYYY-MM-DD
     max_date: Optional[str] = None
@@ -104,6 +109,7 @@ FIELD_TYPE_DEFAULT_CONFIG: Dict[FieldType, Dict[str, Any]] = {
     FieldType.PHONE: PhoneConfig().model_dump(),
     FieldType.DROPDOWN: DropdownConfig().model_dump(),
     FieldType.MULTI_CHECKBOX: MultiCheckboxConfig().model_dump(),
+    FieldType.RADIO: RadioConfig().model_dump(),
     FieldType.DATE: DateConfig().model_dump(),
     FieldType.FILE_UPLOAD: FileUploadConfig().model_dump(),
     FieldType.RATING: RatingConfig().model_dump(),
@@ -145,7 +151,7 @@ class FieldCreate(BaseModel):
         cls, options: List[FieldOptionCreate], info: Any
     ) -> List[FieldOptionCreate]:
         field_type = info.data.get("field_type")
-        choice_types = {FieldType.DROPDOWN, FieldType.MULTI_CHECKBOX}
+        choice_types = {FieldType.DROPDOWN, FieldType.MULTI_CHECKBOX, FieldType.RADIO}
         if options and field_type not in choice_types:
             raise ValueError(
                 f"Options are only supported for field types: "

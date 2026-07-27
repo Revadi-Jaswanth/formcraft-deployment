@@ -19,28 +19,32 @@ class FormRepository(BaseRepository[Form]):
 
     # ── Custom reads ──────────────────────────────────────────────────────────
 
-    def get_with_details(self, form_id: UUID) -> Optional[Form]:
+    def get_with_details(self, form_id: UUID, user_id: Optional[UUID] = None) -> Optional[Form]:
         """Eagerly load fields (with options), conditions, and versions."""
         stmt = (
             select(Form)
             .where(Form.id == form_id, Form.is_deleted == False)
-            .options(
-                selectinload(Form.fields).selectinload(Field.options),
-                selectinload(Form.conditions),
-                selectinload(Form.versions),
-            )
+        )
+        if user_id:
+            stmt = stmt.where(Form.created_by == user_id)
+        stmt = stmt.options(
+            selectinload(Form.fields).selectinload(Field.options),
+            selectinload(Form.conditions),
+            selectinload(Form.versions),
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
-    def get_with_fields(self, form_id: UUID) -> Optional[Form]:
+    def get_with_fields(self, form_id: UUID, user_id: Optional[UUID] = None) -> Optional[Form]:
         """Eagerly load fields and conditions (no versions)."""
         stmt = (
             select(Form)
             .where(Form.id == form_id, Form.is_deleted == False)
-            .options(
-                selectinload(Form.fields).selectinload(Field.options),
-                selectinload(Form.conditions),
-            )
+        )
+        if user_id:
+            stmt = stmt.where(Form.created_by == user_id)
+        stmt = stmt.options(
+            selectinload(Form.fields).selectinload(Field.options),
+            selectinload(Form.conditions),
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
@@ -63,9 +67,12 @@ class FormRepository(BaseRepository[Form]):
         limit: int = 50,
         status: Optional[str] = None,
         search: Optional[str] = None,
+        user_id: Optional[UUID] = None,
     ) -> Tuple[List[Form], int]:
         """Return paginated forms + total count (for the admin dashboard)."""
         base_q = self.db.query(Form).filter(Form.is_deleted == False)
+        if user_id:
+            base_q = base_q.filter(Form.created_by == user_id)
         if status:
             base_q = base_q.filter(Form.status == status)
         if search:
