@@ -279,3 +279,111 @@ def delete_submission(
     sub_repo.db.delete(sub)
     sub_repo.db.commit()
     return {"message": "Response submission deleted."}
+
+
+@router.get(
+    "/{form_id}/submissions",
+    response_model=PaginatedResponse[SubmissionResponse],
+    summary="List all submissions for a form",
+)
+def list_submissions(
+    form_id: UUID,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    form_svc: FormService = Depends(get_form_service),
+    sub_repo: SubmissionRepository = Depends(get_submission_repo),
+) -> PaginatedResponse[SubmissionResponse]:
+    # Ensure form exists and belongs to current user
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
+
+    skip = (page - 1) * limit
+    subs, total = sub_repo.list_for_form(form_id, skip=skip, limit=limit)
+    pages = (total + limit - 1) // limit if total > 0 else 1
+    items = [SubmissionResponse.model_validate(s) for s in subs]
+    return PaginatedResponse(items=items, total=total, page=page, limit=limit, pages=pages)
+
+
+@router.get(
+    "/{form_id}/export/csv",
+    summary="Export submissions as CSV",
+)
+def export_csv(
+    form_id: UUID,
+    current_user: User = Depends(get_current_user),
+    form_svc: FormService = Depends(get_form_service),
+    sub_repo: SubmissionRepository = Depends(get_submission_repo),
+):
+    form = form_svc.get_form_detail(form_id, user_id=current_user.id)
+    subs, _ = sub_repo.list_for_form(form_id, limit=1000)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header: Submission ID, Time, and each field label
+    fields = sorted(form.fields, key=lambda f: f.order_index)
+    header = ["Submission ID", "Submitted At", "IP Address"] + [f.label for f in fields]
+    writer.writerow(header)
+
+    for sub in subs:
+        row = [str(sub.id), sub.submitted_at.isoformat(), sub.ip_address or ""]
+        # Match responses by field ID
+        val_map = {r.field_id: r.value for r in sub.response_values}
+        for f in fields:
+            row.append(val_map.get(f.id, ""))
+        writer.writerow(row)
+
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=submissions_{form_id}.csv"},
+    )
+
+
+@router.delete(
+    "/{form_id}/submissions/{submission_id}",
+    summary="Delete a specific form submission",
+)
+def delete_submission(
+    form_id: UUID,
+    submission_id: UUID,
+    current_user: User = Depends(get_current_user),
+    form_svc: FormService = Depends(get_form_service),
+    sub_repo: SubmissionRepository = Depends(get_submission_repo),
+):
+    # Verify ownership of form
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
+    
+    # Check if submission belongs to form
+    sub = sub_repo.get_with_responses(submission_id)
+    if not sub or sub.form_id != form_id:
+        raise HTTPException(status_code=404, detail="Submission not found.")
+        
+    sub_repo.db.delete(sub)
+    sub_repo.db.commit()
+    return {"message": "Response submission deleted."}
+
+
+@router.delete(
+    "/{form_id}/submissions/{submission_id}",
+    summary="Delete a specific form submission",
+)
+def delete_submission(
+    form_id: UUID,
+    submission_id: UUID,
+    current_user: User = Depends(get_current_user),
+    form_svc: FormService = Depends(get_form_service),
+    sub_repo: SubmissionRepository = Depends(get_submission_repo),
+):
+    # Verify ownership of form
+    form_svc.get_form_detail(form_id, user_id=current_user.id)
+    
+    # Check if submission belongs to form
+    sub = sub_repo.get_with_responses(submission_id)
+    if not sub or sub.form_id != form_id:
+        raise HTTPException(status_code=404, detail="Submission not found.")
+        
+    sub_repo.db.delete(sub)
+    sub_repo.db.commit()
+    return {"message": "Response submission deleted."}
