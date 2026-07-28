@@ -68,18 +68,6 @@ export default function ActivityTimeline({ forms = [], activities = null }) {
       }
     });
 
-    if (list.length === 0) {
-      list.push({
-        id: "mock-act-1",
-        type: "create",
-        form_id: "",
-        form_title: "Workspace",
-        description: "Workspace initialized successfully",
-        timestamp: new Date().toISOString(),
-        icon: "FileText",
-      });
-    }
-
     return list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 8);
   };
 
@@ -104,43 +92,49 @@ export default function ActivityTimeline({ forms = [], activities = null }) {
         </p>
       </div>
 
-      <div className="relative border-l border-surface-850 pl-4 ml-3 space-y-6">
-        {resolved.map((act) => {
-          const Icon = getIcon(act.icon);
-          return (
-            <div key={act.id || `${act.form_id}-${act.timestamp}`} className="relative">
-              {/* Icon marker */}
-              <div
-                className={`absolute -left-7.5 top-0.5 w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${getColor(
-                  act.type
-                )}`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-              </div>
+      {resolved.length === 0 ? (
+        <p className="text-xs text-slate-500 italic py-6 text-center">
+          No recent activities.
+        </p>
+      ) : (
+        <div className="relative border-l border-surface-850 pl-4 ml-3 space-y-6">
+          {resolved.map((act) => {
+            const Icon = getIcon(act.icon);
+            return (
+              <div key={act.id || `${act.form_id}-${act.timestamp}`} className="relative">
+                {/* Icon marker */}
+                <div
+                  className={`absolute -left-7.5 top-0.5 w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${getColor(
+                    act.type
+                  )}`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
 
-              {/* Log Detail */}
-              <div className="space-y-1 pl-1">
-                <p className="text-xs font-semibold text-slate-300">
-                  {act.description}{" "}
-                  {act.form_id ? (
-                    <Link
-                      to={`/forms/${act.form_id}/builder`}
-                      className="text-brand-400 hover:text-brand-300 font-bold hover:underline"
-                    >
-                      "{act.form_title}"
-                    </Link>
-                  ) : (
-                    `"${act.form_title}"`
-                  )}
-                </p>
-                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
-                  {formatUpdateDate(act.timestamp)}
-                </p>
+                {/* Log Detail */}
+                <div className="space-y-1 pl-1">
+                  <p className="text-xs font-semibold text-slate-300">
+                    {act.description}{" "}
+                    {act.form_id ? (
+                      <Link
+                        to={`/forms/${act.form_id}/builder`}
+                        className="text-brand-400 hover:text-brand-300 font-bold hover:underline"
+                      >
+                        "{act.form_title}"
+                      </Link>
+                    ) : (
+                      `"${act.form_title}"`
+                    )}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                    {formatUpdateDate(act.timestamp)}
+                  </p>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

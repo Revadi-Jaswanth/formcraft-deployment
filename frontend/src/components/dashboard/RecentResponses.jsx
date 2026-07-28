@@ -1,44 +1,9 @@
 import { Link } from "react-router-dom";
 import { MessageSquare, Calendar, Globe } from "lucide-react";
 
-export default function RecentResponses({ forms = [] }) {
-  // Generate mock submission entries using forms in workspace
-  const getRecentSubmissions = () => {
-    const list = [];
-    forms.forEach((form, idx) => {
-      if (form.submission_count > 0) {
-        // Generate a few mock records matching form title
-        for (let i = 0; i < Math.min(2, form.submission_count); i++) {
-          list.push({
-            id: `${form.id.slice(0, 8)}-sub-${i}`,
-            formId: form.id,
-            formTitle: form.title,
-            respondent: `Respondent #${1000 + i + idx * 5}`,
-            ipAddress: `192.168.1.${10 + i + idx}`,
-            submittedAt: new Date(Date.now() - i * 4 * 60 * 60 * 1000 - idx * 24 * 60 * 60 * 1000).toISOString(),
-          });
-        }
-      }
-    });
-
-    // Fallback if no forms have submissions
-    if (list.length === 0 && forms.length > 0) {
-      list.push({
-        id: "mock-sub-1",
-        formId: forms[0].id,
-        formTitle: forms[0].title,
-        respondent: "Respondent #1024",
-        ipAddress: "127.0.0.1",
-        submittedAt: new Date().toISOString(),
-      });
-    }
-
-    return list.slice(0, 5).sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-  };
-
-  const submissions = getRecentSubmissions();
-
+export default function RecentResponses({ submissions = [], isLoading = false }) {
   const formatUpdateDate = (dateStr) => {
+    if (!dateStr) return "Just now";
     const date = new Date(dateStr);
     return date.toLocaleDateString(undefined, {
       month: "short",
@@ -57,7 +22,11 @@ export default function RecentResponses({ forms = [] }) {
         </p>
       </div>
 
-      {submissions.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-6 text-slate-500 text-xs">
+          Loading submissions...
+        </div>
+      ) : !submissions || submissions.length === 0 ? (
         <p className="text-xs text-slate-600 italic py-6 text-center">
           No responses received yet.
         </p>
@@ -80,15 +49,15 @@ export default function RecentResponses({ forms = [] }) {
                   className="hover:bg-surface-850/20 hover:text-slate-200 transition-colors group"
                 >
                   <td className="py-3 px-4 font-mono text-brand-400 font-semibold">
-                    {sub.id.slice(0, 12)}...
+                    {sub.id.slice(0, 8)}...
                   </td>
                   <td className="py-3 px-4 truncate max-w-44 font-medium text-slate-300">
                     <Link
-                      to={`/dashboard/forms/${sub.formId}/responses`}
+                      to={`/dashboard/forms/${sub.form_id}/responses`}
                       className="flex items-center gap-2 hover:text-brand-400 transition-colors"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                      <span className="truncate">{sub.formTitle}</span>
+                      <span className="truncate">{sub.form_title}</span>
                     </Link>
                   </td>
                   <td className="py-3 px-4 font-medium text-slate-300">
@@ -96,12 +65,12 @@ export default function RecentResponses({ forms = [] }) {
                   </td>
                   <td className="py-3 px-4 font-mono flex items-center gap-1.5 mt-0.5">
                     <Globe className="w-3 h-3 text-slate-600" />
-                    {sub.ipAddress}
+                    {sub.ip_address}
                   </td>
                   <td className="py-3 px-4 font-medium">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-3 h-3 text-slate-600" />
-                      {formatUpdateDate(sub.submittedAt)}
+                      {formatUpdateDate(sub.submitted_at)}
                     </div>
                   </td>
                 </tr>

@@ -8,6 +8,8 @@ from datetime import datetime, timezone, timedelta
 import json
 import os
 
+from app.core.database import get_db
+from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_form_service, get_submission_repo
 from app.services.form_service import FormService
 from app.repositories.submission_repository import SubmissionRepository
@@ -225,3 +227,39 @@ def update_preferences(
     
     _save_preferences(prefs)
     return current_prefs
+
+
+@router.get(
+    "/submissions",
+    summary="Get recent submissions across all user forms",
+)
+def get_recent_submissions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[dict]:
+    from app.models.form import Form
+    from app.models.submission import Submission
+    
+    forms = db.query(Form).filter(Form.created_by == current_user.id, Form.is_deleted == False).all()
+    form_ids = [f.id for f in forms]
+    
+    if not form_ids:
+        return []
+        
+    subs = db.query(Submission)\
+             .filter(Submission.form_id.in_(form_ids))\
+             .order_by(Submission.submitted_at.desc())\
+             .limit(5).all()
+             
+    res = []
+    for s in subs:
+        form = db.query(Form).filter(Form.id == s.form_id).first()
+        res.append({
+            "id": str(s.id),
+            "form_id": str(s.form_id),
+            "form_title": form.title if form else "Deleted Form",
+            "respondent": f"Respondent #{s.id.hex[:6].upper()}",
+            "ip_address": s.ip_address or "127.0.0.1",
+            "submitted_at": s.submitted_at.isoformat()
+        })
+    return res

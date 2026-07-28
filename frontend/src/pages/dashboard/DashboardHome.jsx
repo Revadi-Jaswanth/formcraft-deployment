@@ -58,6 +58,11 @@ export default function DashboardHome() {
     queryFn: () => dashboardApi.getActivity().then((r) => r.data),
   });
 
+  const { data: submissions, isLoading: submissionsLoading } = useQuery({
+    queryKey: ["dashboard-submissions"],
+    queryFn: () => dashboardApi.getSubmissions().then((r) => r.data),
+  });
+
   const { data: favorites, isLoading: favoritesLoading } = useQuery({
     queryKey: ["dashboard-favorites"],
     queryFn: () => dashboardApi.getFavorites().then((r) => r.data),
@@ -129,7 +134,7 @@ export default function DashboardHome() {
   };
 
   const isWorkspaceLoading =
-    overviewLoading || activityLoading || favoritesLoading || formsLoading;
+    overviewLoading || activityLoading || favoritesLoading || formsLoading || submissionsLoading;
 
   if (isWorkspaceLoading) {
     return (
@@ -309,7 +314,7 @@ export default function DashboardHome() {
             </div>
 
             {/* Submissions list */}
-            <RecentResponses forms={filteredForms} />
+            <RecentResponses submissions={submissions} isLoading={submissionsLoading} />
           </div>
 
           {/* Right panel: Timeline Logs */}

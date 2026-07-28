@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime, timedelta
+import os
+import json
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.api.deps import get_current_user, require_role, get_user_repo, get_form_repo, get_submission_repo
 from app.models.user import User
@@ -17,6 +20,37 @@ router = APIRouter(prefix="/admin", tags=["Admin Platform Management"])
 
 # Enforce admin role for all routes in this router
 admin_required = Depends(require_role(["admin", "ADMIN"]))
+
+SYSTEM_SETTINGS_FILE = os.path.join(settings.UPLOAD_DIR, "system_settings.json")
+
+def _load_system_settings() -> dict:
+    if not os.path.exists(SYSTEM_SETTINGS_FILE):
+        return {
+            "allow_registration": True,
+            "max_forms_per_user": 100,
+            "max_file_size_mb": 10,
+            "allowed_file_types": [".pdf", ".jpg", ".png", ".docx", ".xlsx"],
+            "maintenance_mode": False
+        }
+    try:
+        with open(SYSTEM_SETTINGS_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "allow_registration": True,
+            "max_forms_per_user": 100,
+            "max_file_size_mb": 10,
+            "allowed_file_types": [".pdf", ".jpg", ".png", ".docx", ".xlsx"],
+            "maintenance_mode": False
+        }
+
+def _save_system_settings(data: dict):
+    os.makedirs(os.path.dirname(SYSTEM_SETTINGS_FILE), exist_ok=True)
+    try:
+        with open(SYSTEM_SETTINGS_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
 
 # ==========================================
 # 1. Platform Telemetry & Growth Stats
@@ -71,11 +105,24 @@ def get_platform_stats(
      .group_by(Form.id, Form.title)\
      .order_by(func.count(Submission.id).desc())\
      .limit(5).all()
-     
+      
     most_active_forms = [
         {"id": str(af[0]), "title": af[1], "responses_count": af[2]}
         for af in active_forms_query
     ]
+
+    # Calculate real uploads directory size in MB
+    total_size = 0
+    upload_path = settings.UPLOAD_DIR
+    if os.path.exists(upload_path):
+        for dirpath, dirnames, filenames in os.walk(upload_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                try:
+                    total_size += os.path.getsize(fp)
+                except OSError:
+                    pass
+    storage_usage_mb = round(total_size / (1024 * 1024), 2)
 
     return {
         "summary": {
@@ -87,7 +134,7 @@ def get_platform_stats(
             "archived_forms": archived_forms,
             "total_responses": total_responses,
             "today_responses": today_responses,
-            "storage_usage_mb": round(total_forms * 0.05 + total_responses * 0.01, 2)
+            "storage_usage_mb": storage_usage_mb
         },
         "charts": {
             "user_growth": growth_users,
@@ -136,30 +183,30 @@ def list_all_users(
     return res
 
 @router.get("/users/{user_id}")
-def get_user_details(
+def get_user_details_admin(
     user_id: UUID,
     db: Session = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repo),
     current_user: User = admin_required,
 ):
-    user = user_repo.get_by_id(user_id)
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
         
     forms = db.query(Form).filter(Form.created_by == user.id, Form.is_deleted == False).all()
+    
     forms_list = []
     for f in forms:
-        subs_count = db.query(Submission).filter(Submission.form_id == f.id).count()
+        sub_count = db.query(Submission).filter(Submission.form_id == f.id).count()
         forms_list.append({
             "id": str(f.id),
             "title": f.title,
             "status": f.status,
-            "created_at": f.created_at,
-            "responses_count": subs_count
+            "responses_count": sub_count
         })
         
     return {
-        "profile": {
+        "user": {
             "id": str(user.id),
             "name": user.full_name,
             "email": user.email,
@@ -171,44 +218,40 @@ def get_user_details(
     }
 
 @router.put("/users/{user_id}/status")
-def toggle_user_status(
+def update_user_status(
     user_id: UUID,
     body: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repo),
     current_user: User = admin_required,
 ):
-    user = user_repo.get_by_id(user_id)
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
-    
-    is_active = body.get("is_active")
-    if is_active is None:
-        raise HTTPException(status_code=400, detail="is_active parameter required")
         
-    user.is_active = is_active
-    db.commit()
-    return {"message": "User status updated successfully.", "is_active": user.is_active}
+    if "is_active" in body:
+        user.is_active = bool(body["is_active"])
+        db.commit()
+        
+    status_str = "activated" if user.is_active else "suspended"
+    return {"message": f"User account has been {status_str}.", "is_active": user.is_active}
 
 @router.delete("/users/{user_id}")
-def delete_user_account(
+def delete_user_admin(
     user_id: UUID,
     db: Session = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repo),
     current_user: User = admin_required,
 ):
-    user = user_repo.get_by_id(user_id)
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
-    
-    # Cascade delete forms
-    forms = db.query(Form).filter(Form.created_by == user_id).all()
-    for f in forms:
-        db.delete(f)
         
-    user_repo.delete(user)
+    # Cascade delete forms
+    db.query(Form).filter(Form.created_by == user.id).delete()
+    db.delete(user)
     db.commit()
-    return {"message": "User and all associated data permanently removed."}
+    return {"message": "User account and all related forms permanently purged."}
 
 # ==========================================
 # 3. Form Management
@@ -232,14 +275,14 @@ def list_all_forms(
     res = []
     for f in forms:
         creator = db.query(User).filter(User.id == f.created_by).first()
-        subs_count = db.query(Submission).filter(Submission.form_id == f.id).count()
+        sub_count = db.query(Submission).filter(Submission.form_id == f.id).count()
         res.append({
             "id": str(f.id),
             "title": f.title,
             "status": f.status,
             "created_at": f.created_at,
             "creator_email": creator.email if creator else "Deleted User",
-            "responses_count": subs_count
+            "responses_count": sub_count
         })
     return res
 
@@ -259,7 +302,7 @@ def archive_form_admin(
     return {"message": f"Form status updated to {form.status}.", "status": form.status}
 
 @router.delete("/forms/{form_id}")
-def delete_form_admin(
+def delete_form_admin_endpoint(
     form_id: UUID,
     db: Session = Depends(get_db),
     form_repo: FormRepository = Depends(get_form_repo),
@@ -372,19 +415,14 @@ def get_platform_audit_logs(
 def get_system_settings(
     current_user: User = admin_required,
 ):
-    return {
-        "allow_registration": True,
-        "max_forms_per_user": 100,
-        "max_file_size_mb": 10,
-        "allowed_file_types": [".pdf", ".jpg", ".png", ".docx", ".xlsx"],
-        "maintenance_mode": False
-    }
+    return _load_system_settings()
 
 @router.put("/settings")
 def update_system_settings(
     body: Dict[str, Any] = Body(...),
     current_user: User = admin_required,
 ):
+    _save_system_settings(body)
     return {
         "message": "System settings updated successfully.",
         "settings": body
