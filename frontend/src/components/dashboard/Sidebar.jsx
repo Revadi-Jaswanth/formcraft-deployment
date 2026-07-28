@@ -16,6 +16,8 @@ import {
   X,
   FileText,
   MessageSquare,
+  Users,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useForms, useDeleteForm, useDuplicateForm } from "../../hooks/useForms";
@@ -33,7 +35,9 @@ export default function Sidebar({
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Query forms list for dynamic accordions (high limit to see forms list)
+  const isAdmin = currentUser?.role?.toLowerCase() === "admin";
+
+  // Query forms list for dynamic accordions (only relevant for standard users)
   const { data } = useForms({ limit: 100 });
   const forms = useMemo(() => data?.items ?? [], [data]);
 
@@ -59,7 +63,7 @@ export default function Sidebar({
     <div className="flex flex-col h-full bg-surface-900 border-r border-surface-850 transition-all duration-300">
       {/* Brand Logo Header */}
       <div className="px-4 py-5 border-b border-surface-850 flex items-center justify-between shrink-0">
-        <Link to="/" className="flex items-center gap-3 min-w-0">
+        <Link to={isAdmin ? "/admin" : "/dashboard"} className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center shadow-glow shrink-0">
             <Zap className="w-4.5 h-4.5 text-white" />
           </div>
@@ -69,7 +73,7 @@ export default function Sidebar({
                 FormCraft
               </span>
               <span className="text-[9px] text-slate-500 font-semibold tracking-wider uppercase block mt-0.5">
-                Workspaces
+                {isAdmin ? "Admin Console" : "SaaS Portal"}
               </span>
             </div>
           )}
@@ -98,87 +102,136 @@ export default function Sidebar({
 
       {/* Nav List */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
-        {/* Core items */}
-        <div className="space-y-1">
-          <SidebarItem
-            to="/dashboard"
-            icon={LayoutDashboard}
-            label={isCollapsed ? "" : "Dashboard"}
-            onClick={() => setMobileOpen(false)}
-          />
-          <button
-            onClick={() => {
-              setMobileOpen(false);
-              onCreateFormClick();
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-surface-850 transition-all border border-transparent"
-          >
-            <PlusCircle className="w-4 h-4 shrink-0 text-brand-400" />
-            {!isCollapsed && <span>Create Form</span>}
-          </button>
-        </div>
-
-        {/* Accordions (Only show full view when expanded) */}
-        {!isCollapsed && (
-          <div className="space-y-4">
-            <SidebarAccordion
-              title="Created Forms"
-              icon={FileText}
-              items={forms}
-              type="forms"
-              onDelete={handleDeleteForm}
-              onDuplicate={handleDuplicateForm}
+        {isAdmin ? (
+          /* ── ADMIN SIDEBAR NAVIGATION ── */
+          <div className="space-y-1">
+            <SidebarItem
+              to="/admin"
+              icon={LayoutDashboard}
+              label={isCollapsed ? "" : "Dashboard"}
+              onClick={() => setMobileOpen(false)}
             />
-            <SidebarAccordion
-              title="Responses"
+            <SidebarItem
+              to="/admin/users"
+              icon={Users}
+              label={isCollapsed ? "" : "Users"}
+              onClick={() => setMobileOpen(false)}
+            />
+            <SidebarItem
+              to="/admin/forms"
+              icon={FileText}
+              label={isCollapsed ? "" : "All Forms"}
+              onClick={() => setMobileOpen(false)}
+            />
+            <SidebarItem
+              to="/admin/responses"
               icon={MessageSquare}
-              items={forms}
-              type="responses"
+              label={isCollapsed ? "" : "All Responses"}
+              onClick={() => setMobileOpen(false)}
+            />
+            <SidebarItem
+              to="/admin/analytics"
+              icon={BarChart2}
+              label={isCollapsed ? "" : "Analytics"}
+              onClick={() => setMobileOpen(false)}
+            />
+            <SidebarItem
+              to="/admin/system"
+              icon={Activity}
+              label={isCollapsed ? "" : "Audit Logs"}
+              onClick={() => setMobileOpen(false)}
+            />
+            <SidebarItem
+              to="/admin/settings"
+              icon={Settings}
+              label={isCollapsed ? "" : "Platform Settings"}
+              onClick={() => setMobileOpen(false)}
             />
           </div>
-        )}
+        ) : (
+          /* ── STANDARD USER SIDEBAR NAVIGATION ── */
+          <>
+            <div className="space-y-1">
+              <SidebarItem
+                to="/dashboard"
+                icon={LayoutDashboard}
+                label={isCollapsed ? "" : "Dashboard"}
+                onClick={() => setMobileOpen(false)}
+              />
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  onCreateFormClick();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-surface-850 transition-all border border-transparent"
+              >
+                <PlusCircle className="w-4 h-4 shrink-0 text-brand-400" />
+                {!isCollapsed && <span>Create Form</span>}
+              </button>
+            </div>
 
-        {/* Placeholder Items */}
-        <div className="space-y-1">
-          <SidebarItem
-            to="/dashboard/analytics"
-            icon={BarChart2}
-            label={isCollapsed ? "" : "Analytics"}
-            badge={isCollapsed ? "" : "Soon"}
-            badgeType="coming-soon"
-            onClick={(e) => e.preventDefault()}
-          />
-          <SidebarItem
-            to="/dashboard/templates"
-            icon={Layers}
-            label={isCollapsed ? "" : "Templates"}
-            badge={isCollapsed ? "" : "Soon"}
-            badgeType="coming-soon"
-            onClick={(e) => e.preventDefault()}
-          />
-          <SidebarItem
-            to="/dashboard/trash"
-            icon={Trash2}
-            label={isCollapsed ? "" : "Trash"}
-            onClick={(e) => e.preventDefault()}
-          />
-        </div>
+            {/* Accordions (Only show full view when expanded) */}
+            {!isCollapsed && (
+              <div className="space-y-4">
+                <SidebarAccordion
+                  title="Created Forms"
+                  icon={FileText}
+                  items={forms}
+                  type="forms"
+                  onDelete={handleDeleteForm}
+                  onDuplicate={handleDuplicateForm}
+                />
+                <SidebarAccordion
+                  title="Responses"
+                  icon={MessageSquare}
+                  items={forms}
+                  type="responses"
+                />
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <SidebarItem
+                to="/dashboard/analytics"
+                icon={BarChart2}
+                label={isCollapsed ? "" : "Analytics"}
+                onClick={() => setMobileOpen(false)}
+              />
+              <SidebarItem
+                to="/dashboard/templates"
+                icon={Layers}
+                label={isCollapsed ? "" : "Templates"}
+                onClick={() => setMobileOpen(false)}
+              />
+              <SidebarItem
+                to="/dashboard/archived"
+                icon={Trash2}
+                label={isCollapsed ? "" : "Archived Forms"}
+                onClick={() => setMobileOpen(false)}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer User Profile & Action Box */}
       <div className="p-3 border-t border-surface-850 shrink-0 space-y-1.5">
-        <SidebarItem
-          to="/profile"
-          icon={User}
-          label={isCollapsed ? "" : "Profile"}
-          onClick={() => setMobileOpen(false)}
-        />
-        <SidebarItem
-          to="/settings"
-          icon={Settings}
-          label={isCollapsed ? "" : "Settings"}
-          onClick={() => setMobileOpen(false)}
-        />
+        {!isAdmin && (
+          <>
+            <SidebarItem
+              to="/profile"
+              icon={User}
+              label={isCollapsed ? "" : "Profile"}
+              onClick={() => setMobileOpen(false)}
+            />
+            <SidebarItem
+              to="/settings"
+              icon={Settings}
+              label={isCollapsed ? "" : "Settings"}
+              onClick={() => setMobileOpen(false)}
+            />
+          </>
+        )}
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-all"

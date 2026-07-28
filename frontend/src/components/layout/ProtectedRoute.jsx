@@ -1,8 +1,8 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 
-export default function ProtectedRoute() {
-  const { authenticated, loading } = useAuth();
+export default function ProtectedRoute({ allowedRoles }) {
+  const { authenticated, loading, currentUser } = useAuth();
 
   if (loading) {
     return (
@@ -17,5 +17,15 @@ export default function ProtectedRoute() {
     );
   }
 
-  return authenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  if (!authenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(currentUser?.role?.toLowerCase())) {
+    // Redirect unauthorized user to appropriate dashboard space based on their role
+    const defaultRedirect = currentUser?.role?.toLowerCase() === "admin" ? "/admin" : "/dashboard";
+    return <Navigate to={defaultRedirect} replace />;
+  }
+
+  return <Outlet />;
 }

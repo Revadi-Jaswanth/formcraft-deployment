@@ -116,5 +116,6 @@ export { conditionsApi } from "./conditionsApi";
 export { publicApi } from "./publicApi";
 export { dashboardApi } from "./dashboardApi";
 export { profileApi } from "./profileApi";
+export { adminApi } from "./adminApi";
 
 export default api;

@@ -11,7 +11,7 @@ from app.repositories.user_repository import UserRepository
 
 import bcrypt
 
-from app.core.security import create_access_token, decode_access_token
+from app.core.security import create_access_token, decode_access_token, create_refresh_token, decode_refresh_token
 
 class AuthService:
     @staticmethod
@@ -42,6 +42,17 @@ class AuthService:
     def decode_access_token(token: str) -> Optional[dict]:
         """Decodes and validates a JWT access token."""
         sub = decode_access_token(token)
+        return {"sub": sub} if sub else None
+
+    @staticmethod
+    def create_refresh_token(subject: Any, expires_delta: Optional[timedelta] = None) -> str:
+        """Generates a signed JWT refresh token using core security utility."""
+        return create_refresh_token(str(subject), expires_delta)
+
+    @staticmethod
+    def decode_refresh_token(token: str) -> Optional[dict]:
+        """Decodes and validates a JWT refresh token."""
+        sub = decode_refresh_token(token)
         return {"sub": sub} if sub else None
 
     @classmethod
