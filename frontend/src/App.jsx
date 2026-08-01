@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
@@ -31,6 +32,16 @@ import AdminResponsesList from "./pages/admin/ResponsesList";
 import AdminSystemSettings from "./pages/admin/SystemSettings";
 
 export default function App() {
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const isLight = savedTheme === "light";
+    if (isLight) {
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <Routes>

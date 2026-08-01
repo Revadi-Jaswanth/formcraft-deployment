@@ -54,8 +54,10 @@ export default function Settings() {
       // Update global body data-theme attribute
       if (appearance === "dark") {
         document.documentElement.classList.add("dark");
+        localStorage.setItem("theme", "dark");
       } else {
         document.documentElement.classList.remove("dark");
+        localStorage.setItem("theme", "light");
       }
       
       toast.success("Settings updated successfully!");

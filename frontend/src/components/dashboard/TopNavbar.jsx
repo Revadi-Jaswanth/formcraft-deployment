@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { formsApi } from "../../services/formsApi";
+import { profileApi } from "../../services/api";
 import toast from "react-hot-toast";
 
 export default function TopNavbar({ setMobileOpen, onCreateFormClick }) {
@@ -23,7 +24,44 @@ export default function TopNavbar({ setMobileOpen, onCreateFormClick }) {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default dark theme active
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return document.documentElement.classList.contains("dark");
+  });
+
+  // Keep button state in sync if theme is updated elsewhere (e.g. settings page)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+    window.addEventListener("storage", handleStorageChange);
+    // Also check on interval or when document classes change
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      observer.disconnect();
+    };
+  }, []);
+
+  const handleToggleTheme = async () => {
+    const nextDark = !isDarkMode;
+    setIsDarkMode(nextDark);
+    if (nextDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+    try {
+      await profileApi.updateSettings({ appearance: nextDark ? "dark" : "light" });
+    } catch (err) {
+      // silent fail
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -87,9 +125,9 @@ export default function TopNavbar({ setMobileOpen, onCreateFormClick }) {
 
       {/* Right Area: System Controls & User Options */}
       <div className="flex items-center gap-3">
-        {/* Theme Toggle - UI Only */}
+        {/* Theme Toggle */}
         <button
-          onClick={() => setIsDarkMode(!isDarkMode)}
+          onClick={handleToggleTheme}
           title="Toggle Theme"
           className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-surface-800 rounded transition-all"
         >
