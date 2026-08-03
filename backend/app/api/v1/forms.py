@@ -3,8 +3,13 @@ Forms router — admin CRUD, publish, archive, duplicate, versioning.
 """
 from typing import List, Optional
 from uuid import UUID
+import csv
+import io
+import json
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import get_form_service, get_current_user, get_submission_repo
 from app.schemas.common import MessageResponse, PaginatedResponse
@@ -21,12 +26,11 @@ from app.schemas.submission import SubmissionResponse
 from app.repositories.submission_repository import SubmissionRepository
 from app.services.form_service import FormService
 from app.models.user import User
-import csv
-import io
-from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix="/forms", tags=["Forms"])
 
+
+# ── Form CRUD ─────────────────────────────────────────────────────────────────
 
 @router.post(
     "",
@@ -57,7 +61,9 @@ def list_forms(
     svc: FormService = Depends(get_form_service),
 ) -> PaginatedResponse[FormListItem]:
     skip = (page - 1) * limit
-    forms, total = svc.list_forms(skip=skip, limit=limit, form_status=form_status, search=search, user_id=current_user.id)
+    forms, total = svc.list_forms(
+        skip=skip, limit=limit, form_status=form_status, search=search, user_id=current_user.id
+    )
     pages = (total + limit - 1) // limit if total > 0 else 1
     items = [FormListItem.model_validate(svc.enrich_list_item(f)) for f in forms]
     return PaginatedResponse(items=items, total=total, page=page, limit=limit, pages=pages)
@@ -104,6 +110,8 @@ def delete_form(
 ) -> None:
     svc.delete_form(form_id, user_id=current_user.id)
 
+
+# ── Lifecycle actions ─────────────────────────────────────────────────────────
 
 @router.post(
     "/{form_id}/publish",
@@ -164,6 +172,8 @@ def duplicate_form(
     return FormDetailResponse.model_validate(form)
 
 
+# ── Versions & sharing ────────────────────────────────────────────────────────
+
 @router.get(
     "/{form_id}/versions",
     response_model=List[FormVersionResponse],
@@ -189,7 +199,6 @@ def get_share_link(
 ) -> dict:
     form = svc.get_form_detail(form_id, user_id=current_user.id)
     if not form.share_token:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Form has not been published yet.")
     return {
         "share_token": form.share_token,
@@ -197,89 +206,7 @@ def get_share_link(
     }
 
 
-@router.get(
-    "/{form_id}/submissions",
-    response_model=PaginatedResponse[SubmissionResponse],
-    summary="List all submissions for a form",
-)
-def list_submissions(
-    form_id: UUID,
-    page: int = Query(default=1, ge=1),
-    limit: int = Query(default=20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
-    form_svc: FormService = Depends(get_form_service),
-    sub_repo: SubmissionRepository = Depends(get_submission_repo),
-) -> PaginatedResponse[SubmissionResponse]:
-    # Ensure form exists and belongs to current user
-    form_svc.get_form_detail(form_id, user_id=current_user.id)
-
-    skip = (page - 1) * limit
-    subs, total = sub_repo.list_for_form(form_id, skip=skip, limit=limit)
-    pages = (total + limit - 1) // limit if total > 0 else 1
-    items = [SubmissionResponse.model_validate(s) for s in subs]
-    return PaginatedResponse(items=items, total=total, page=page, limit=limit, pages=pages)
-
-
-@router.get(
-    "/{form_id}/export/csv",
-    summary="Export submissions as CSV",
-)
-def export_csv(
-    form_id: UUID,
-    current_user: User = Depends(get_current_user),
-    form_svc: FormService = Depends(get_form_service),
-    sub_repo: SubmissionRepository = Depends(get_submission_repo),
-):
-    form = form_svc.get_form_detail(form_id, user_id=current_user.id)
-    subs, _ = sub_repo.list_for_form(form_id, limit=1000)
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # Header: Submission ID, Time, and each field label
-    fields = sorted(form.fields, key=lambda f: f.order_index)
-    header = ["Submission ID", "Submitted At", "IP Address"] + [f.label for f in fields]
-    writer.writerow(header)
-
-    for sub in subs:
-        row = [str(sub.id), sub.submitted_at.isoformat(), sub.ip_address or ""]
-        # Match responses by field ID
-        val_map = {r.field_id: r.value for r in sub.response_values}
-        for f in fields:
-            row.append(val_map.get(f.id, ""))
-        writer.writerow(row)
-
-    output.seek(0)
-    return StreamingResponse(
-        io.BytesIO(output.getvalue().encode("utf-8")),
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=submissions_{form_id}.csv"},
-    )
-
-
-@router.delete(
-    "/{form_id}/submissions/{submission_id}",
-    summary="Delete a specific form submission",
-)
-def delete_submission(
-    form_id: UUID,
-    submission_id: UUID,
-    current_user: User = Depends(get_current_user),
-    form_svc: FormService = Depends(get_form_service),
-    sub_repo: SubmissionRepository = Depends(get_submission_repo),
-):
-    # Verify ownership of form
-    form_svc.get_form_detail(form_id, user_id=current_user.id)
-    
-    # Check if submission belongs to form
-    sub = sub_repo.get_with_responses(submission_id)
-    if not sub or sub.form_id != form_id:
-        raise HTTPException(status_code=404, detail="Submission not found.")
-        
-    sub_repo.db.delete(sub)
-    sub_repo.db.commit()
-    return {"message": "Response submission deleted."}
-
+# ── Submissions list ──────────────────────────────────────────────────────────
 
 @router.get(
     "/{form_id}/submissions",
@@ -294,9 +221,7 @@ def list_submissions(
     form_svc: FormService = Depends(get_form_service),
     sub_repo: SubmissionRepository = Depends(get_submission_repo),
 ) -> PaginatedResponse[SubmissionResponse]:
-    # Ensure form exists and belongs to current user
     form_svc.get_form_detail(form_id, user_id=current_user.id)
-
     skip = (page - 1) * limit
     subs, total = sub_repo.list_for_form(form_id, skip=skip, limit=limit)
     pages = (total + limit - 1) // limit if total > 0 else 1
@@ -304,66 +229,150 @@ def list_submissions(
     return PaginatedResponse(items=items, total=total, page=page, limit=limit, pages=pages)
 
 
+# ── Export (Day 15) ───────────────────────────────────────────────────────────
+
+def _build_csv_stream(form, subs):
+    """Generator that yields CSV rows as UTF-8 bytes — enables true streaming."""
+    fields = sorted(form.fields, key=lambda f: f.order_index)
+
+    # Header row
+    buf = io.StringIO()
+    csv.writer(buf).writerow(
+        ["submission_id", "submitted_at", "completion_time_seconds", "ip_address"]
+        + [f.label for f in fields]
+    )
+    yield buf.getvalue().encode("utf-8")
+
+    # Data rows — one yield per submission keeps memory flat
+    for sub in subs:
+        buf = io.StringIO()
+        val_map = {r.field_id: r.value for r in sub.response_values}
+        csv.writer(buf).writerow(
+            [
+                str(sub.id),
+                sub.submitted_at.isoformat() if sub.submitted_at else "",
+                sub.completion_time_seconds if sub.completion_time_seconds is not None else "",
+                sub.ip_address or "",
+            ]
+            + [val_map.get(f.id, "") for f in fields]
+        )
+        yield buf.getvalue().encode("utf-8")
+
+
+def _build_json_stream(form, subs):
+    """Generator that yields a JSON array of submission objects as UTF-8 bytes."""
+    fields = sorted(form.fields, key=lambda f: f.order_index)
+    field_map = {f.id: f.label for f in fields}
+
+    yield b"[\n"
+    for idx, sub in enumerate(subs):
+        val_map = {r.field_id: r.value for r in sub.response_values}
+        record = {
+            "submission_id": str(sub.id),
+            "submitted_at": sub.submitted_at.isoformat() if sub.submitted_at else None,
+            "completion_time_seconds": sub.completion_time_seconds,
+            "ip_address": sub.ip_address,
+            # Nested object: field_label -> submitted_value
+            "responses": {
+                field_map[fid]: val
+                for fid, val in val_map.items()
+                if fid in field_map
+            },
+        }
+        chunk = json.dumps(record, default=str, ensure_ascii=False)
+        if idx < len(subs) - 1:
+            chunk += ","
+        yield (chunk + "\n").encode("utf-8")
+    yield b"]\n"
+
+
 @router.get(
-    "/{form_id}/export/csv",
-    summary="Export submissions as CSV",
+    "/{form_id}/export",
+    summary="Export submissions as CSV or JSON",
+    description=(
+        "Streams all submissions for the given form. "
+        "Pass **?format=csv** (default) for a spreadsheet-ready CSV file, or "
+        "**?format=json** for a structured JSON array. "
+        "\n\n"
+        "**CSV columns:** `submission_id`, `submitted_at`, `completion_time_seconds`, "
+        "`ip_address`, then one column per field label. "
+        "\n\n"
+        "**JSON record shape:**\n"
+        "```json\n"
+        "{\n"
+        '  "submission_id": "...",\n'
+        '  "submitted_at": "2024-01-01T12:00:00",\n'
+        '  "completion_time_seconds": 42,\n'
+        '  "ip_address": "1.2.3.4",\n'
+        '  "responses": { "<field label>": "<submitted value>", ... }\n'
+        "}\n"
+        "```\n"
+        "\n"
+        "File-upload fields are included as their stored URL string. "
+        "The response header `X-Total-Submissions` reports the total row count."
+    ),
 )
-def export_csv(
+def export_submissions(
     form_id: UUID,
+    format: str = Query(
+        default="csv",
+        pattern="^(csv|json)$",
+        description="Output format: 'csv' (default) or 'json'",
+    ),
     current_user: User = Depends(get_current_user),
     form_svc: FormService = Depends(get_form_service),
     sub_repo: SubmissionRepository = Depends(get_submission_repo),
 ):
     form = form_svc.get_form_detail(form_id, user_id=current_user.id)
-    subs, _ = sub_repo.list_for_form(form_id, limit=1000)
+    # Cap at 10 000 rows to keep memory bounded; use pagination for larger sets
+    subs, total = sub_repo.list_for_form(form_id, limit=10_000)
 
-    output = io.StringIO()
-    writer = csv.writer(output)
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    base_name = f"submissions_{form_id}_{ts}"
+    common_headers = {"X-Total-Submissions": str(total)}
 
-    # Header: Submission ID, Time, and each field label
-    fields = sorted(form.fields, key=lambda f: f.order_index)
-    header = ["Submission ID", "Submitted At", "IP Address"] + [f.label for f in fields]
-    writer.writerow(header)
+    if format == "json":
+        return StreamingResponse(
+            _build_json_stream(form, subs),
+            media_type="application/json",
+            headers={
+                **common_headers,
+                "Content-Disposition": f'attachment; filename="{base_name}.json"',
+            },
+        )
 
-    for sub in subs:
-        row = [str(sub.id), sub.submitted_at.isoformat(), sub.ip_address or ""]
-        # Match responses by field ID
-        val_map = {r.field_id: r.value for r in sub.response_values}
-        for f in fields:
-            row.append(val_map.get(f.id, ""))
-        writer.writerow(row)
-
-    output.seek(0)
+    # Default: CSV
     return StreamingResponse(
-        io.BytesIO(output.getvalue().encode("utf-8")),
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=submissions_{form_id}.csv"},
+        _build_csv_stream(form, subs),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            **common_headers,
+            "Content-Disposition": f'attachment; filename="{base_name}.csv"',
+        },
     )
 
 
-@router.delete(
-    "/{form_id}/submissions/{submission_id}",
-    summary="Delete a specific form submission",
+@router.get(
+    "/{form_id}/export/csv",
+    summary="Export submissions as CSV (legacy — prefer /export?format=csv)",
+    include_in_schema=False,  # hidden from Swagger; kept for backward compat
 )
-def delete_submission(
+def export_csv_alias(
     form_id: UUID,
-    submission_id: UUID,
     current_user: User = Depends(get_current_user),
     form_svc: FormService = Depends(get_form_service),
     sub_repo: SubmissionRepository = Depends(get_submission_repo),
 ):
-    # Verify ownership of form
-    form_svc.get_form_detail(form_id, user_id=current_user.id)
-    
-    # Check if submission belongs to form
-    sub = sub_repo.get_with_responses(submission_id)
-    if not sub or sub.form_id != form_id:
-        raise HTTPException(status_code=404, detail="Submission not found.")
-        
-    sub_repo.db.delete(sub)
-    sub_repo.db.commit()
-    return {"message": "Response submission deleted."}
+    return export_submissions(
+        form_id=form_id,
+        format="csv",
+        current_user=current_user,
+        form_svc=form_svc,
+        sub_repo=sub_repo,
+    )
 
+
+# ── Submission delete ─────────────────────────────────────────────────────────
 
 @router.delete(
     "/{form_id}/submissions/{submission_id}",
@@ -376,14 +385,12 @@ def delete_submission(
     form_svc: FormService = Depends(get_form_service),
     sub_repo: SubmissionRepository = Depends(get_submission_repo),
 ):
-    # Verify ownership of form
     form_svc.get_form_detail(form_id, user_id=current_user.id)
-    
-    # Check if submission belongs to form
+
     sub = sub_repo.get_with_responses(submission_id)
     if not sub or sub.form_id != form_id:
         raise HTTPException(status_code=404, detail="Submission not found.")
-        
+
     sub_repo.db.delete(sub)
     sub_repo.db.commit()
     return {"message": "Response submission deleted."}
