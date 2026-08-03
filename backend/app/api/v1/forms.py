@@ -435,7 +435,67 @@ def export_csv_alias(
     )
 
 
-# ── Submission delete ─────────────────────────────────────────────────────────
+# ── Bulk Delete Submissions (Day 19) ──────────────────────────────────────────
+
+from pydantic import BaseModel
+
+class BulkDeleteSubmissionsRequest(BaseModel):
+    submission_ids: Optional[List[UUID]] = None
+    delete_all: bool = False
+
+
+@router.post(
+    "/{form_id}/submissions/bulk-delete",
+    summary="Bulk delete form submissions",
+    description="Deletes selected or all submissions for a form and records an audit log.",
+)
+def bulk_delete_submissions(
+    form_id: UUID,
+    body: BulkDeleteSubmissionsRequest,
+    current_user: User = Depends(get_current_user),
+    form_svc: FormService = Depends(get_form_service),
+    sub_repo: SubmissionRepository = Depends(get_submission_repo),
+):
+    from app.models.submission import Submission
+    from app.models.audit_log import AuditLog
+
+    form = form_svc.get_form_detail(form_id, user_id=current_user.id)
+
+    query = sub_repo.db.query(Submission).filter(Submission.form_id == form_id)
+
+    if not body.delete_all:
+        if not body.submission_ids:
+            raise HTTPException(status_code=400, detail="No submission IDs or delete_all flag provided.")
+        query = query.filter(Submission.id.in_(body.submission_ids))
+
+    subs_to_delete = query.all()
+    deleted_count = len(subs_to_delete)
+
+    for sub in subs_to_delete:
+        sub_repo.db.delete(sub)
+
+    # Record Audit Log entry
+    audit_entry = AuditLog(
+        user_id=current_user.id,
+        action="BULK_DELETE_SUBMISSIONS",
+        target_type="submission",
+        target_id=str(form_id),
+        actor_email=current_user.email,
+        details={
+            "deleted_count": deleted_count,
+            "form_title": form.title,
+            "delete_all": body.delete_all,
+            "submission_ids": [str(sid) for sid in (body.submission_ids or [])][:10],
+        },
+    )
+    sub_repo.db.add(audit_entry)
+    sub_repo.db.commit()
+
+    return {
+        "deleted_count": deleted_count,
+        "message": f"Successfully deleted {deleted_count} submission(s).",
+    }
+
 
 @router.delete(
     "/{form_id}/submissions/{submission_id}",
@@ -457,3 +517,4 @@ def delete_submission(
     sub_repo.db.delete(sub)
     sub_repo.db.commit()
     return {"message": "Response submission deleted."}
+

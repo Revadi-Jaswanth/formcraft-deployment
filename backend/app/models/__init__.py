@@ -8,6 +8,7 @@ from app.models.form import Form, FormVersion  # noqa: F401
 from app.models.field import Field, FieldOption  # noqa: F401
 from app.models.condition import ConditionalRule  # noqa: F401
 from app.models.submission import Submission, ResponseValue  # noqa: F401
+from app.models.audit_log import AuditLog  # noqa: F401
 
 __all__ = [
     "Base",
@@ -20,4 +21,5 @@ __all__ = [
     "ConditionalRule",
     "Submission",
     "ResponseValue",
+    "AuditLog",
 ]

@@ -35,6 +35,10 @@ export const responsesApi = {
 
   delete: (formId, submissionId) =>
     api.delete(`/forms/${formId}/submissions/${submissionId}`),
+
+  // Day 19: Bulk delete submissions with audit logging
+  bulkDelete: (formId, data) =>
+    api.post(`/forms/${formId}/submissions/bulk-delete`, data),
 };
 
 export default responsesApi;

@@ -446,6 +446,43 @@ export default function FormResponses() {
     );
   }
 
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === submissions.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(submissions.map((s) => s.id));
+    }
+  };
+
+  const toggleSelectRow = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (
+      !confirm(
+        `Are you sure you want to bulk delete ${selectedIds.length} selected submission(s)? This action will be audited.`
+      )
+    )
+      return;
+
+    try {
+      const res = await responsesApi.bulkDelete(formId, {
+        submission_ids: selectedIds,
+      });
+      toast.success(res.data.message || `Deleted ${selectedIds.length} submission(s).`);
+      setSelectedIds([]);
+      refetch();
+    } catch {
+      toast.error("Failed to execute bulk deletion.");
+    }
+  };
+
   const fields = form?.fields ?? [];
   const activeFilterCount = countActiveFilters(filters);
 
@@ -466,7 +503,7 @@ export default function FormResponses() {
               {form?.title} Responses
             </h2>
             <p className="text-slate-500 text-xs mt-0.5">
-              Review, filter, and export respondent data
+              Review, filter, bulk manage, and export respondent data
             </p>
           </div>
         </div>
@@ -521,7 +558,7 @@ export default function FormResponses() {
         />
       ) : (
         <div className="p-6 rounded-2xl border border-surface-850 bg-surface-900/30 backdrop-blur-md shadow-sm space-y-4">
-          {/* ── Toolbar (search + filters + count) ── */}
+          {/* ── Toolbar (search + filters + bulk delete + count) ── */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               {/* Search box */}
@@ -545,6 +582,18 @@ export default function FormResponses() {
                 onClear={handleClearFilters}
                 activeCount={activeFilterCount}
               />
+
+              {/* Bulk Delete Action Button */}
+              {selectedIds.length > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-all animate-fade-in"
+                  id="bulk-delete-btn"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Selected ({selectedIds.length})</span>
+                </button>
+              )}
 
               {/* Active filter badges */}
               {filters.date_from && (
@@ -596,6 +645,17 @@ export default function FormResponses() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-surface-900 border-b border-surface-850 text-slate-500 font-semibold uppercase tracking-wider">
+                      <th className="py-3.5 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            submissions.length > 0 &&
+                            selectedIds.length === submissions.length
+                          }
+                          onChange={toggleSelectAll}
+                          className="rounded border-surface-700 text-brand-500 focus:ring-0 cursor-pointer"
+                        />
+                      </th>
                       <th className="py-3.5 px-4 min-w-32">Submission ID</th>
                       <th className="py-3.5 px-4 min-w-44">Submitted At</th>
                       <th className="py-3.5 px-4 min-w-36">IP Address</th>
@@ -608,45 +668,63 @@ export default function FormResponses() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-850/40 text-slate-400">
-                    {submissions.map((sub) => (
-                      <tr
-                        key={sub.id}
-                        onClick={() => setSelectedSub(sub)}
-                        className="hover:bg-surface-850/20 transition-colors cursor-pointer"
-                      >
-                        <td className="py-3.5 px-4 font-mono text-brand-400 font-semibold">
-                          {sub.id.slice(0, 12)}…
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                            {new Date(sub.submitted_at).toLocaleString()}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono">
-                          <div className="flex items-center gap-1.5">
-                            <Globe className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                            {sub.ip_address || "—"}
-                          </div>
-                        </td>
-                        {fields.map((field) => (
-                          <td key={field.id} className="py-3.5 px-4 max-w-xs truncate">
-                            {getResponseValue(sub, field.id)}
-                          </td>
-                        ))}
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm("Delete this submission?")) handleDeleteSub(sub.id);
-                            }}
-                            className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors"
+                    {submissions.map((sub) => {
+                      const isSelected = selectedIds.includes(sub.id);
+                      return (
+                        <tr
+                          key={sub.id}
+                          onClick={() => setSelectedSub(sub)}
+                          className={`transition-colors cursor-pointer ${
+                            isSelected
+                              ? "bg-brand-500/10 hover:bg-brand-500/15"
+                              : "hover:bg-surface-850/20"
+                          }`}
+                        >
+                          <td
+                            className="py-3.5 px-3 w-10 text-center"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectRow(sub.id)}
+                              className="rounded border-surface-700 text-brand-500 focus:ring-0 cursor-pointer"
+                            />
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-brand-400 font-semibold">
+                            {sub.id.slice(0, 12)}…
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                              {new Date(sub.submitted_at).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <Globe className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                              {sub.ip_address || "—"}
+                            </div>
+                          </td>
+                          {fields.map((field) => (
+                            <td key={field.id} className="py-3.5 px-4 max-w-xs truncate">
+                              {getResponseValue(sub, field.id)}
+                            </td>
+                          ))}
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Delete this submission?")) handleDeleteSub(sub.id);
+                              }}
+                              className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

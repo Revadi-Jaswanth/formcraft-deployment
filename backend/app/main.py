@@ -14,12 +14,18 @@ from app.core.exceptions import FormCraftException
 from app.api.v1.router import api_v1_router
 
 
+from app.core.database import engine
+from app.models import Base
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ──────────────────────────────────────────────────
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    # Ensure database schema tables (e.g. audit_logs) are created
+    Base.metadata.create_all(bind=engine)
     yield
-    # ── Shutdown (nothing to teardown in M1) ─────────────────────
+    # ── Shutdown ─────────────────────────────────────────────────
 
 
 app = FastAPI(

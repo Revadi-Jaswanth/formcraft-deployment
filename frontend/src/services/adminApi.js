@@ -21,9 +21,10 @@ export const adminApi = {
   // Audit Timeline
   getAuditLogs: () => api.get("/admin/audit-logs"),
   
-  // Platform Settings
-  getSettings: () => api.get("/admin/settings"),
-  updateSettings: (data) => api.put("/admin/settings", data),
+  // Retention Policy (Day 19)
+  getRetentionPolicy: () => api.get("/admin/retention-policy"),
+  updateRetentionPolicy: (data) => api.put("/admin/retention-policy", data),
+  executeRetentionPolicy: () => api.post("/admin/retention-policy/execute"),
 };
 
 export default adminApi;

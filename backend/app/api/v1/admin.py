@@ -359,63 +359,114 @@ def list_all_responses(
     return res
 
 # ==========================================
-# 5. Dynamic Platform Timeline & Audit Logs
+# 5. Dynamic Platform Timeline & Audit Logs (Day 19)
 # ==========================================
 @router.get("/audit-logs")
 def get_platform_audit_logs(
     db: Session = Depends(get_db),
     current_user: User = admin_required,
 ):
+    from app.models.audit_log import AuditLog
+
     logs = []
-    
-    # Gather registrations
-    recent_users = db.query(User).order_by(User.created_at.desc()).limit(15).all()
+
+    # 1. Fetch persistent database audit log entries
+    db_audit_entries = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(30).all()
+    for entry in db_audit_entries:
+        logs.append({
+            "id": str(entry.id),
+            "timestamp": entry.created_at.isoformat(),
+            "type": entry.action,
+            "actor": entry.actor_email,
+            "action": f"{entry.action.replace('_', ' ').title()} on {entry.target_type}",
+            "details": f"Target ID: {entry.target_id or 'N/A'} | {entry.details}",
+            "ip_address": entry.ip_address,
+        })
+
+    # 2. Gather user registrations
+    recent_users = db.query(User).order_by(User.created_at.desc()).limit(10).all()
     for u in recent_users:
         logs.append({
-            "timestamp": u.created_at,
+            "timestamp": u.created_at.isoformat(),
             "type": "USER_SIGNUP",
             "actor": u.email,
             "action": "registered a new account",
             "details": f"User: {u.full_name} ({u.role})"
         })
-        
-    # Gather form creations
-    recent_forms = db.query(Form).order_by(Form.created_at.desc()).limit(15).all()
+
+    # 3. Gather form creations
+    recent_forms = db.query(Form).order_by(Form.created_at.desc()).limit(10).all()
     for f in recent_forms:
         creator = db.query(User).filter(User.id == f.created_by).first()
         actor = creator.email if creator else "System"
         logs.append({
-            "timestamp": f.created_at,
+            "timestamp": f.created_at.isoformat(),
             "type": "FORM_CREATE",
             "actor": actor,
             "action": f"created form '{f.title}'",
             "details": f"Form status: {f.status}"
         })
-        
-    # Gather response submissions
-    recent_subs = db.query(Submission).order_by(Submission.submitted_at.desc()).limit(15).all()
+
+    # 4. Gather response submissions
+    recent_subs = db.query(Submission).order_by(Submission.submitted_at.desc()).limit(10).all()
     for s in recent_subs:
         form = db.query(Form).filter(Form.id == s.form_id).first()
         form_title = form.title if form else "Deleted Form"
         logs.append({
-            "timestamp": s.submitted_at,
+            "timestamp": s.submitted_at.isoformat(),
             "type": "FORM_SUBMISSION",
             "actor": s.ip_address or "Anonymous",
             "action": f"submitted response to '{form_title}'",
             "details": f"Session ID: {s.session_id or 'N/A'}"
         })
-        
+
     logs.sort(key=lambda x: x["timestamp"], reverse=True)
-    return logs[:30]
+    return logs[:50]
+
 
 # ==========================================
-# 6. Platform System Settings
+# 6. Platform System Settings & Retention Policy (Day 19)
 # ==========================================
+RETENTION_CONFIG_FILE = os.path.join(settings.UPLOAD_DIR, "retention_policy.json")
+
+
+def _load_retention_policy() -> Dict[str, Any]:
+    if not os.path.exists(RETENTION_CONFIG_FILE):
+        return {
+            "auto_delete_days": 90,
+            "enabled": True,
+            "archive_purged": True,
+            "last_run_at": None,
+            "total_purged_count": 0,
+        }
+    try:
+        with open(RETENTION_CONFIG_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "auto_delete_days": 90,
+            "enabled": True,
+            "archive_purged": True,
+            "last_run_at": None,
+            "total_purged_count": 0,
+        }
+
+
+def _save_retention_policy(policy: Dict[str, Any]):
+    os.makedirs(os.path.dirname(RETENTION_CONFIG_FILE), exist_ok=True)
+    try:
+        with open(RETENTION_CONFIG_FILE, "w") as f:
+            json.dump(policy, f, indent=2)
+    except Exception:
+        pass
+
+
 @router.get("/settings")
 def get_system_settings(
     current_user: User = admin_required,
 ):
     return _load_system_settings()
+
 
 @router.put("/settings")
 def update_system_settings(
@@ -427,3 +478,96 @@ def update_system_settings(
         "message": "System settings updated successfully.",
         "settings": body
     }
+
+
+@router.get("/retention-policy")
+def get_retention_policy(
+    current_user: User = admin_required,
+):
+    """Get active Data Retention Policy config."""
+    return _load_retention_policy()
+
+
+@router.put("/retention-policy")
+def update_retention_policy(
+    body: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = admin_required,
+):
+    """Update Data Retention Policy and record audit log."""
+    from app.models.audit_log import AuditLog
+
+    policy = _load_retention_policy()
+    policy.update(body)
+    _save_retention_policy(policy)
+
+    # Record Audit Entry
+    audit_entry = AuditLog(
+        user_id=current_user.id,
+        action="RETENTION_POLICY_UPDATE",
+        target_type="system_setting",
+        target_id="retention_policy",
+        actor_email=current_user.email,
+        details=policy,
+    )
+    db.add(audit_entry)
+    db.commit()
+
+    return {
+        "message": "Data Retention Policy updated.",
+        "policy": policy,
+    }
+
+
+@router.post("/retention-policy/execute")
+def execute_retention_policy(
+    db: Session = Depends(get_db),
+    current_user: User = admin_required,
+):
+    """
+    Executes data retention policy cleanup:
+    Deletes all form submissions older than `auto_delete_days`.
+    """
+    from datetime import datetime, timezone, timedelta
+    from app.models.audit_log import AuditLog
+
+    policy = _load_retention_policy()
+    auto_delete_days = int(policy.get("auto_delete_days", 90))
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=auto_delete_days)
+
+    # Query expired submissions
+    expired_subs = db.query(Submission).filter(Submission.submitted_at <= cutoff).all()
+    purged_count = len(expired_subs)
+
+    for sub in expired_subs:
+        db.delete(sub)
+
+    # Update policy stats
+    policy["last_run_at"] = datetime.now(timezone.utc).isoformat()
+    policy["total_purged_count"] = policy.get("total_purged_count", 0) + purged_count
+    _save_retention_policy(policy)
+
+    # Record Audit Entry
+    audit_entry = AuditLog(
+        user_id=current_user.id,
+        action="RETENTION_POLICY_EXECUTE",
+        target_type="submission",
+        target_id=f"cutoff_{auto_delete_days}d",
+        actor_email=current_user.email,
+        details={
+            "purged_count": purged_count,
+            "auto_delete_days": auto_delete_days,
+            "cutoff_timestamp": cutoff.isoformat(),
+        },
+    )
+    db.add(audit_entry)
+    db.commit()
+
+    return {
+        "purged_count": purged_count,
+        "auto_delete_days": auto_delete_days,
+        "executed_at": policy["last_run_at"],
+        "message": f"Retention Policy executed. Purged {purged_count} submission(s) older than {auto_delete_days} days.",
+    }
+

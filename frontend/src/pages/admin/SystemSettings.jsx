@@ -247,9 +247,127 @@ export default function SystemSettings() {
                 </div>
               </div>
             </div>
+
+            {/* Setting 4: Data Retention Policy Widget (Day 19) */}
+            <RetentionPolicyWidget />
           </div>
         </div>
       )}
     </div>
   );
 }
+
+// ── Retention Policy & Bulk Purge Widget ──────────────────────────────────────
+function RetentionPolicyWidget() {
+  const qc = useQueryClient();
+  const [executing, setExecuting] = useState(false);
+
+  const { data: policy, isLoading } = useQuery({
+    queryKey: ["admin-retention-policy"],
+    queryFn: () => adminApi.getRetentionPolicy().then((r) => r.data),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data) => adminApi.updateRetentionPolicy(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-retention-policy"] });
+      toast.success("Retention policy updated!");
+    },
+    onError: () => toast.error("Failed to update retention policy."),
+  });
+
+  const handleDaysChange = (days) => {
+    if (!policy) return;
+    updateMutation.mutate({ ...policy, auto_delete_days: Number(days) });
+  };
+
+  const handleExecute = async () => {
+    if (
+      !confirm(
+        `Are you sure you want to execute data retention cleanup? Submissions older than ${policy?.auto_delete_days || 90} days will be permanently purged and audited.`
+      )
+    )
+      return;
+
+    setExecuting(true);
+    try {
+      const res = await adminApi.executeRetentionPolicy();
+      toast.success(res.data.message || "Retention policy executed successfully.");
+      qc.invalidateQueries({ queryKey: ["admin-retention-policy"] });
+      qc.invalidateQueries({ queryKey: ["admin-audit-logs"] });
+    } catch {
+      toast.error("Failed to execute retention policy.");
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  if (isLoading) return null;
+
+  return (
+    <div className="py-6 border-t border-surface-850 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-xs font-bold text-slate-200 block flex items-center gap-2">
+            <Database className="w-4 h-4 text-brand-400" />
+            Data Retention Policy & Automated Bulk Purge
+          </span>
+          <span className="text-[10px] text-slate-500 font-medium mt-0.5 block leading-relaxed max-w-md">
+            Automatically purge historical response submissions older than the specified retention threshold to maintain compliance and clean storage.
+          </span>
+        </div>
+
+        <button
+          onClick={handleExecute}
+          disabled={executing}
+          className="btn-primary text-xs py-2 px-4 shrink-0 flex items-center gap-2 shadow-glow"
+          id="run-retention-btn"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${executing ? "animate-spin" : ""}`} />
+          {executing ? "Purging..." : "Run Retention Purge Now"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+        <div className="p-4 rounded-xl border border-surface-800 bg-surface-950/40 space-y-2">
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+            Auto-Delete Threshold
+          </label>
+          <select
+            value={policy?.auto_delete_days || 90}
+            onChange={(e) => handleDaysChange(e.target.value)}
+            className="input text-xs py-1.5 font-bold"
+            id="retention-days-select"
+          >
+            <option value={30}>Older than 30 days</option>
+            <option value={60}>Older than 60 days</option>
+            <option value={90}>Older than 90 days (Default)</option>
+            <option value={180}>Older than 180 days</option>
+            <option value={365}>Older than 365 days (1 Year)</option>
+          </select>
+        </div>
+
+        <div className="p-4 rounded-xl border border-surface-800 bg-surface-950/40">
+          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+            Total Submissions Purged
+          </span>
+          <span className="text-xl font-black text-emerald-400 mt-1 block font-mono">
+            {policy?.total_purged_count || 0} entries
+          </span>
+        </div>
+
+        <div className="p-4 rounded-xl border border-surface-800 bg-surface-950/40">
+          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+            Last Retention Execution
+          </span>
+          <span className="text-xs font-semibold text-slate-300 mt-2 block">
+            {policy?.last_run_at
+              ? new Date(policy.last_run_at).toLocaleString()
+              : "Never run"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
