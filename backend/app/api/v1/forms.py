@@ -212,18 +212,81 @@ def get_share_link(
     "/{form_id}/submissions",
     response_model=PaginatedResponse[SubmissionResponse],
     summary="List all submissions for a form",
+    description=(
+        "Returns a paginated list of submissions. "
+        "Supports rich server-side filtering via query parameters:\n\n"
+        "- **date_from / date_to** — ISO 8601 datetime range on `submitted_at`\n"
+        "- **field_id + field_value** — filter by a specific field's response (case-insensitive substring)\n"
+        "- **field_id** alone — filter to submissions that answered a particular field\n"
+        "- **ip_address** — exact match on respondent IP\n"
+        "- **search** — substring match across all response values\n"
+        "- **order_by** — column to sort by (`submitted_at` | `ip_address` | `completion_time_seconds`)\n"
+        "- **order_dir** — `asc` or `desc` (default: `desc`)\n"
+    ),
 )
 def list_submissions(
     form_id: UUID,
+    # ── Pagination ────────────────────────────────────────────────────────────
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
+    # ── Date range filters ────────────────────────────────────────────────────
+    date_from: Optional[datetime] = Query(
+        default=None,
+        description="Include submissions submitted at or after this ISO 8601 datetime",
+    ),
+    date_to: Optional[datetime] = Query(
+        default=None,
+        description="Include submissions submitted at or before this ISO 8601 datetime",
+    ),
+    # ── Field-value filter ────────────────────────────────────────────────────
+    field_id: Optional[UUID] = Query(
+        default=None,
+        description="Filter to submissions that have a response for this field UUID",
+    ),
+    field_value: Optional[str] = Query(
+        default=None,
+        description="Case-insensitive substring to match inside the field's response value (requires field_id)",
+    ),
+    # ── Other filters ─────────────────────────────────────────────────────────
+    ip_address: Optional[str] = Query(
+        default=None,
+        description="Exact IP address to filter by",
+    ),
+    search: Optional[str] = Query(
+        default=None,
+        description="Substring search across all response values in the submission",
+    ),
+    # ── Sorting ───────────────────────────────────────────────────────────────
+    order_by: str = Query(
+        default="submitted_at",
+        pattern="^(submitted_at|ip_address|completion_time_seconds)$",
+        description="Column to sort by",
+    ),
+    order_dir: str = Query(
+        default="desc",
+        pattern="^(asc|desc)$",
+        description="Sort direction",
+    ),
+    # ── Dependencies ─────────────────────────────────────────────────────────
     current_user: User = Depends(get_current_user),
     form_svc: FormService = Depends(get_form_service),
     sub_repo: SubmissionRepository = Depends(get_submission_repo),
 ) -> PaginatedResponse[SubmissionResponse]:
     form_svc.get_form_detail(form_id, user_id=current_user.id)
     skip = (page - 1) * limit
-    subs, total = sub_repo.list_for_form(form_id, skip=skip, limit=limit)
+    subs, total = sub_repo.list_for_form(
+        form_id=form_id,
+        skip=skip,
+        limit=limit,
+        date_from=date_from,
+        date_to=date_to,
+        field_id=field_id,
+        field_value=field_value,
+        ip_address=ip_address,
+        search=search,
+        order_by=order_by,
+        order_dir=order_dir,
+    )
     pages = (total + limit - 1) // limit if total > 0 else 1
     items = [SubmissionResponse.model_validate(s) for s in subs]
     return PaginatedResponse(items=items, total=total, page=page, limit=limit, pages=pages)
