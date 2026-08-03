@@ -471,9 +471,17 @@ export default function FormResponses() {
           </div>
         </div>
 
-        {total > 0 && (
-          <ExportDropdown formTitle={form?.title} formId={formId} disabled={false} />
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => navigate(`/dashboard/forms/${formId}/analytics`)}
+            className="btn-secondary text-xs flex items-center gap-1.5 py-2 px-3"
+            id="view-analytics-btn"
+          >
+            <BarChart2 className="w-4 h-4 text-brand-400" />
+            <span>Analytics</span>
+          </button>
+          <ExportDropdown formTitle={form?.title} formId={formId} disabled={total === 0} />
+        </div>
       </div>
 
       {/* ── Metrics Row ── */}

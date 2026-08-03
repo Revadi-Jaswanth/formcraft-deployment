@@ -7,6 +7,7 @@ export const dashboardApi = {
   getFavorites: () => api.get("/dashboard/favorites"),
   getSubmissions: () => api.get("/dashboard/submissions"),
   updatePreferences: (data) => api.patch("/dashboard/preferences", data),
+  getFormAnalytics: (formId) => api.get(`/dashboard/form-analytics/${formId}`),
 };
 
 export default dashboardApi;

@@ -21,6 +21,7 @@ import FormPreview from "./pages/dashboard/FormPreview";
 import Profile from "./pages/dashboard/Profile";
 import Settings from "./pages/dashboard/Settings";
 import UserAnalytics from "./pages/dashboard/Analytics";
+import FormAnalytics from "./pages/dashboard/FormAnalytics";
 import UserTemplates from "./pages/dashboard/Templates";
 import UserArchivedForms from "./pages/dashboard/ArchivedForms";
 
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/dashboard/forms/:formId/builder" element={<FormBuilder />} />
             <Route path="/dashboard/forms/:formId/preview" element={<FormPreview />} />
             <Route path="/dashboard/forms/:formId/responses" element={<FormResponses />} />
+            <Route path="/dashboard/forms/:formId/analytics" element={<FormAnalytics />} />
             <Route path="/dashboard/analytics" element={<UserAnalytics />} />
             <Route path="/dashboard/templates" element={<UserTemplates />} />
             <Route path="/dashboard/archived" element={<UserArchivedForms />} />
