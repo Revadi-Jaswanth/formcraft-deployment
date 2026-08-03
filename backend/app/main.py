@@ -29,18 +29,28 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title=f"{settings.APP_NAME} — Enterprise Low-Code Dynamic Form Platform API",
     version=settings.APP_VERSION,
     description="""
-## FormCraft — Low-Code Dynamic Form Platform
+## FormCraft — Production-Grade Dynamic Form & Workflow Platform API
 
-### Milestone 1 endpoints:
-- **Forms** — full CRUD, publish, archive, duplicate, versioning
-- **Fields** — typed field library (text, number, email, dropdown, checkbox, date, file_upload, rating)
-- **Conditions** — conditional show/hide/require rules
-- **Public** — unauthenticated form retrieval + submission
+### 🚀 Complete 3-Milestone Architecture:
 
-> Auth: In development mode all admin routes are open. Set `ENVIRONMENT=production` and `API_KEY=<key>` to enable API-key protection.
+#### **Milestone 1 — Form Schema Engine & Field Type Library**
+- **Form Lifecycle Management**: Full CRUD, versioning (`form_versions` snapshots), state transitions (`draft` → `published` → `archived`), duplication & share token generation.
+- **Typed Field Catalogue**: 11 supported field types (`text`, `textarea`, `number`, `email`, `phone`, `dropdown`, `radio`, `multi_checkbox`, `date`, `file_upload`, `rating`) with JSONB configurations.
+- **Public Form Access**: Unauthenticated form retrieval by token.
+
+#### **Milestone 2 — Conditional Logic Engine & Submission Pipeline**
+- **Rule Evaluator**: Multi-operator condition evaluator (`equals`, `not_equals`, `contains`, `greater_than`, `less_than`, `is_empty`, `is_not_empty`, `in`) driving `show`, `hide`, `require`, and `disable` actions.
+- **Validation Engine**: Server-side Pydantic & client-side validation mirroring with human-readable error contracts.
+- **Submission Engine**: Secure response intake, file attachment upload handling, and confirmation payloads.
+
+#### **Milestone 3 — Analytics, Export, File Storage & Data Compliance**
+- **Response Analytics & Visualization**: Aggregated telemetry, 30-day submission velocity trends, completion time histograms, and per-field Recharts distribution charts.
+- **Streaming Data Export**: High-performance CSV & JSON streaming endpoints (`GET /forms/{id}/export?format=csv|json`).
+- **Advanced Submission Browser**: Server-side filtering by date range, field-values, IP addresses, search strings, and sorting.
+- **Data Governance**: Data Retention Policy enforcement, audited bulk deletion (`POST /forms/{id}/submissions/bulk-delete`), and persistent `audit_logs` tracking.
     """,
     docs_url="/docs",
     redoc_url="/redoc",

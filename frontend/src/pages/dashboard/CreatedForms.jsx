@@ -29,6 +29,7 @@ import {
   Eye,
   Edit,
   Link2,
+  BarChart2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import EmptyState from "../../components/dashboard/EmptyState";
@@ -413,6 +414,13 @@ export default function CreatedForms() {
                         className="p-1 hover:text-slate-200 rounded text-slate-400"
                       >
                         <Link2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/dashboard/forms/${form.id}/analytics`)}
+                        title="Visual Analytics"
+                        className="p-1 hover:text-brand-400 rounded text-slate-400"
+                      >
+                        <BarChart2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => duplicateMutation.mutate({ id: form.id, data: {} })}
