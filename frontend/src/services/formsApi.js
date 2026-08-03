@@ -15,6 +15,8 @@ export const formsApi = {
   getSubmissions: (id, params) => api.get(`/forms/${id}/submissions`, { params }),
   deleteSubmission: (formId, subId) => api.delete(`/forms/${formId}/submissions/${subId}`),
   exportCSV: (id) => api.get(`/forms/${id}/export/csv`, { responseType: "blob" }),
+  // Day 2: field-type catalogue from backend
+  getFieldTypes: () => api.get("/field-types"),
 };
 
 export default formsApi;

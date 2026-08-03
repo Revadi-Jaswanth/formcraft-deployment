@@ -115,6 +115,229 @@ FIELD_TYPE_DEFAULT_CONFIG: Dict[FieldType, Dict[str, Any]] = {
     FieldType.RATING: RatingConfig().model_dump(),
 }
 
+# ── Field types that support option lists ─────────────────────────────────────
+CHOICE_FIELD_TYPES = {FieldType.DROPDOWN, FieldType.MULTI_CHECKBOX, FieldType.RADIO}
+
+
+# ── API Response Schemas for GET /field-types ─────────────────────────────────
+
+class FieldTypeConfigProperty(BaseModel):
+    """Describes a single configurable property of a field type."""
+    key: str
+    type: str          # "string" | "integer" | "float" | "boolean" | "array"
+    label: str
+    description: str
+    default: Any
+    required: bool = False
+
+
+class FieldTypeMetadata(BaseModel):
+    """Full metadata for a single field type — returned by GET /field-types."""
+    type: str
+    label: str
+    description: str
+    icon: str          # lucide-react icon name (used by the frontend)
+    color: str         # Tailwind color class (e.g. "text-blue-400")
+    supports_options: bool  # True for dropdown / radio / multi_checkbox
+    default_config: Dict[str, Any]
+    config_schema: List[FieldTypeConfigProperty]
+
+
+# ── Canonical field-type catalogue ────────────────────────────────────────────
+# This is the single source of truth consumed by GET /field-types.
+
+FIELD_TYPE_CATALOGUE: List[Dict[str, Any]] = [
+    {
+        "type": FieldType.TEXT,
+        "label": "Short Text",
+        "description": "Single-line text input",
+        "icon": "Type",
+        "color": "text-blue-400",
+        "supports_options": False,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.TEXT],
+        "config_schema": [
+            FieldTypeConfigProperty(key="min_length", type="integer", label="Min Length",
+                description="Minimum number of characters required", default=0),
+            FieldTypeConfigProperty(key="max_length", type="integer", label="Max Length",
+                description="Maximum number of characters allowed", default=5000),
+            FieldTypeConfigProperty(key="multiline", type="boolean", label="Multiline",
+                description="Allow line breaks in input", default=False),
+        ],
+    },
+    {
+        "type": FieldType.TEXTAREA,
+        "label": "Long Text",
+        "description": "Multi-line textarea for extended answers",
+        "icon": "AlignLeft",
+        "color": "text-indigo-400",
+        "supports_options": False,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.TEXTAREA],
+        "config_schema": [
+            FieldTypeConfigProperty(key="min_length", type="integer", label="Min Length",
+                description="Minimum number of characters required", default=0),
+            FieldTypeConfigProperty(key="max_length", type="integer", label="Max Length",
+                description="Maximum number of characters allowed", default=10000),
+            FieldTypeConfigProperty(key="rows", type="integer", label="Visible Rows",
+                description="Number of visible text rows (2–20)", default=4),
+        ],
+    },
+    {
+        "type": FieldType.NUMBER,
+        "label": "Number",
+        "description": "Numeric input with optional range and precision constraints",
+        "icon": "Hash",
+        "color": "text-violet-400",
+        "supports_options": False,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.NUMBER],
+        "config_schema": [
+            FieldTypeConfigProperty(key="min_value", type="float", label="Min Value",
+                description="Smallest value accepted (null = no limit)", default=None),
+            FieldTypeConfigProperty(key="max_value", type="float", label="Max Value",
+                description="Largest value accepted (null = no limit)", default=None),
+            FieldTypeConfigProperty(key="integer_only", type="boolean", label="Integer Only",
+                description="Reject decimal values", default=False),
+            FieldTypeConfigProperty(key="decimal_places", type="integer", label="Decimal Places",
+                description="Maximum decimal precision (0–10)", default=2),
+            FieldTypeConfigProperty(key="unit", type="string", label="Unit",
+                description="Optional unit label shown beside the input (e.g. kg, $)", default=None),
+        ],
+    },
+    {
+        "type": FieldType.EMAIL,
+        "label": "Email",
+        "description": "Email address field with format validation",
+        "icon": "Mail",
+        "color": "text-pink-400",
+        "supports_options": False,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.EMAIL],
+        "config_schema": [
+            FieldTypeConfigProperty(key="placeholder", type="string", label="Placeholder",
+                description="Hint text shown inside the input", default=None),
+        ],
+    },
+    {
+        "type": FieldType.PHONE,
+        "label": "Phone",
+        "description": "Phone number input with optional format validation",
+        "icon": "Phone",
+        "color": "text-rose-400",
+        "supports_options": False,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.PHONE],
+        "config_schema": [
+            FieldTypeConfigProperty(key="country_code", type="string", label="Country Code",
+                description="Default country code (e.g. +1, +91)", default=None),
+            FieldTypeConfigProperty(key="format_validation", type="boolean", label="Format Validation",
+                description="Validate phone number format", default=True),
+        ],
+    },
+    {
+        "type": FieldType.DROPDOWN,
+        "label": "Dropdown",
+        "description": "Single-select (or multi-select) list from a predefined set of options",
+        "icon": "ChevronDown",
+        "color": "text-amber-400",
+        "supports_options": True,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.DROPDOWN],
+        "config_schema": [
+            FieldTypeConfigProperty(key="allow_other", type="boolean", label="Allow Other",
+                description="Let respondents type a custom answer", default=False),
+            FieldTypeConfigProperty(key="searchable", type="boolean", label="Searchable",
+                description="Enable search / filter inside the dropdown", default=False),
+            FieldTypeConfigProperty(key="multiple", type="boolean", label="Multiple Select",
+                description="Allow selecting more than one option", default=False),
+        ],
+    },
+    {
+        "type": FieldType.RADIO,
+        "label": "Radio Buttons",
+        "description": "Single-select option list displayed as radio buttons",
+        "icon": "CircleDot",
+        "color": "text-purple-400",
+        "supports_options": True,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.RADIO],
+        "config_schema": [
+            FieldTypeConfigProperty(key="allow_other", type="boolean", label="Allow Other",
+                description="Let respondents type a custom answer", default=False),
+        ],
+    },
+    {
+        "type": FieldType.MULTI_CHECKBOX,
+        "label": "Checkboxes",
+        "description": "Multi-select option list displayed as checkboxes",
+        "icon": "CheckSquare",
+        "color": "text-emerald-400",
+        "supports_options": True,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.MULTI_CHECKBOX],
+        "config_schema": [
+            FieldTypeConfigProperty(key="min_selections", type="integer", label="Min Selections",
+                description="Minimum number of checkboxes that must be ticked", default=0),
+            FieldTypeConfigProperty(key="max_selections", type="integer", label="Max Selections",
+                description="Maximum number of checkboxes that can be ticked (null = unlimited)", default=None),
+            FieldTypeConfigProperty(key="allow_other", type="boolean", label="Allow Other",
+                description="Let respondents type a custom answer", default=False),
+        ],
+    },
+    {
+        "type": FieldType.DATE,
+        "label": "Date",
+        "description": "Date or date-time picker with optional range constraints",
+        "icon": "Calendar",
+        "color": "text-cyan-400",
+        "supports_options": False,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.DATE],
+        "config_schema": [
+            FieldTypeConfigProperty(key="min_date", type="string", label="Earliest Date",
+                description="ISO 8601 date string — earliest selectable date (YYYY-MM-DD)", default=None),
+            FieldTypeConfigProperty(key="max_date", type="string", label="Latest Date",
+                description="ISO 8601 date string — latest selectable date (YYYY-MM-DD)", default=None),
+            FieldTypeConfigProperty(key="include_time", type="boolean", label="Include Time",
+                description="Show a time-picker alongside the date picker", default=False),
+            FieldTypeConfigProperty(key="date_format", type="string", label="Date Format",
+                description="Display format string (e.g. YYYY-MM-DD, DD/MM/YYYY)", default="YYYY-MM-DD"),
+        ],
+    },
+    {
+        "type": FieldType.FILE_UPLOAD,
+        "label": "File Upload",
+        "description": "Secure file upload with type and size constraints",
+        "icon": "Upload",
+        "color": "text-teal-400",
+        "supports_options": False,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.FILE_UPLOAD],
+        "config_schema": [
+            FieldTypeConfigProperty(key="allowed_types", type="array", label="Allowed File Types",
+                description="List of accepted extensions without dot (e.g. ['pdf','jpg'])",
+                default=["pdf", "docx", "doc", "jpg", "jpeg", "png", "gif", "xlsx", "csv", "txt"]),
+            FieldTypeConfigProperty(key="max_size_mb", type="integer", label="Max File Size (MB)",
+                description="Maximum allowed file size in megabytes (1–100)", default=10),
+            FieldTypeConfigProperty(key="multiple", type="boolean", label="Allow Multiple Files",
+                description="Let respondents upload more than one file", default=False),
+            FieldTypeConfigProperty(key="max_files", type="integer", label="Max File Count",
+                description="Maximum number of files when multiple is enabled (1–20)", default=1),
+        ],
+    },
+    {
+        "type": FieldType.RATING,
+        "label": "Rating",
+        "description": "Star, heart or thumb rating scale",
+        "icon": "Star",
+        "color": "text-yellow-400",
+        "supports_options": False,
+        "default_config": FIELD_TYPE_DEFAULT_CONFIG[FieldType.RATING],
+        "config_schema": [
+            FieldTypeConfigProperty(key="scale", type="integer", label="Scale",
+                description="Number of rating steps (2–10)", default=5),
+            FieldTypeConfigProperty(key="icon", type="string", label="Icon Style",
+                description="Icon used for each step: star | heart | thumb", default="star"),
+            FieldTypeConfigProperty(key="low_label", type="string", label="Low Label",
+                description="Label shown at the low end of the scale", default="Poor"),
+            FieldTypeConfigProperty(key="high_label", type="string", label="High Label",
+                description="Label shown at the high end of the scale", default="Excellent"),
+        ],
+    },
+]
+
+
 
 # ── FieldOption Schemas ───────────────────────────────────────────────────────
 

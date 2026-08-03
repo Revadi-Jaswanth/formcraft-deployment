@@ -9,12 +9,42 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 
 from app.api.deps import get_field_service, get_current_user, get_form_service
-from app.schemas.field import FieldCreate, FieldResponse, FieldUpdate, FieldReorderRequest
+from app.schemas.field import (
+    FieldCreate,
+    FieldResponse,
+    FieldUpdate,
+    FieldReorderRequest,
+    FieldTypeMetadata,
+    FIELD_TYPE_CATALOGUE,
+)
 from app.services.field_service import FieldService
 from app.services.form_service import FormService
 from app.models.user import User
 
 router = APIRouter(prefix="/forms/{form_id}/fields", tags=["Fields"])
+
+# Separate router for the /field-types meta endpoint (no form_id prefix)
+meta_router = APIRouter(tags=["Field Types"])
+
+
+@meta_router.get(
+    "/field-types",
+    response_model=List[FieldTypeMetadata],
+    summary="List all supported field types with their configurable properties",
+    description=(
+        "Returns the complete catalogue of field types supported by the platform. "
+        "Each entry includes the field type identifier, human-readable label, "
+        "icon name, colour hint, whether options are supported, the default "
+        "configuration values, and a schema describing every configurable property. "
+        "This endpoint is used by the Form Builder UI to dynamically render the "
+        "field-type palette and their configuration panels."
+    ),
+)
+def get_field_types() -> List[FieldTypeMetadata]:
+    """Return the full field-type catalogue — no authentication required."""
+    return [FieldTypeMetadata(**entry) for entry in FIELD_TYPE_CATALOGUE]
+
+
 
 
 @router.get(
