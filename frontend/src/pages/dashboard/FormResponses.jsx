@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   X,
   ArrowUpDown,
+  BarChart2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import EmptyState from "../../components/dashboard/EmptyState";
@@ -343,8 +344,17 @@ const DEFAULT_FILTERS = {
 };
 
 export default function FormResponses() {
-  const { formId } = useParams();
+  const { formId: paramFormId } = useParams();
   const navigate = useNavigate();
+
+  // Fallback: If no formId parameter in URL, auto-resolve to the user's first form template
+  const { data: userForms, isLoading: userFormsLoading } = useQuery({
+    queryKey: ["user-forms-fallback"],
+    queryFn: () => formsApi.list().then((r) => r.data),
+    enabled: !paramFormId,
+  });
+
+  const formId = paramFormId || (userForms?.items && userForms.items[0]?.id);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [selectedSub, setSelectedSub] = useState(null);
@@ -426,7 +436,7 @@ export default function FormResponses() {
     }
   };
 
-  if (formLoading || subsLoading) {
+  if (formLoading || subsLoading || (!paramFormId && userFormsLoading)) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
