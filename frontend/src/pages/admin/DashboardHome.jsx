@@ -188,44 +188,9 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* Main Charts & Activity layout */}
+      {/* Main Activity layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Side: Growth Charts */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* User growth line graph */}
-            <div className="p-6 rounded-2xl border border-surface-850 bg-surface-900/40 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block">
-                    User Registrations
-                  </span>
-                  <span className="text-xs font-semibold text-slate-300">
-                    Growth timeline (7 days)
-                  </span>
-                </div>
-                <UserPlus className="w-4 h-4 text-brand-400" />
-              </div>
-              <AdminMiniChart data={charts.user_growth} colorClass="text-brand-500" fillId="brand-grad" />
-            </div>
-
-            {/* Submissions line graph */}
-            <div className="p-6 rounded-2xl border border-surface-850 bg-surface-900/40 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block">
-                    Response Submissions
-                  </span>
-                  <span className="text-xs font-semibold text-slate-300">
-                    Activity timeline (7 days)
-                  </span>
-                </div>
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-              </div>
-              <AdminMiniChart data={charts.responses_submitted} colorClass="text-emerald-500" fillId="em-grad" />
-            </div>
-          </div>
-
           {/* Table: Most Active Forms */}
           <div className="p-6 rounded-2xl border border-surface-850 bg-surface-900/40 space-y-4">
             <div className="flex items-center justify-between">
