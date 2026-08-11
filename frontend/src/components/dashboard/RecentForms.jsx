@@ -46,7 +46,7 @@ export default function RecentForms({ forms = [] }) {
               >
                 <td className="py-3 px-4 font-medium text-slate-300 group-hover:text-slate-100">
                   <Link
-                    to={`/forms/${form.id}/builder`}
+                    to={`/dashboard/forms/${form.id}/builder`}
                     className="flex items-center gap-2 max-w-xs truncate"
                   >
                     <FileText className="w-3.5 h-3.5 text-brand-400 shrink-0" />

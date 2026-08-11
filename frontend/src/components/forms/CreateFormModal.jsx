@@ -22,7 +22,7 @@ export default function CreateFormModal({ onClose }) {
       {
         onSuccess: (form) => {
           onClose();
-          navigate(`/forms/${form.id}/builder`);
+          navigate(`/dashboard/forms/${form.id}/builder`);
         },
       }
     );

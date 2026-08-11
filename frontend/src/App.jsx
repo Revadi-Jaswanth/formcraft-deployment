@@ -53,7 +53,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* ── Protected User SaaS Area ───────────────────────────── */}
-        <Route element={<ProtectedRoute allowedRoles={["owner", "user"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["admin", "owner", "user"]} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/dashboard/forms" element={<CreatedForms />} />
@@ -61,6 +61,13 @@ export default function App() {
             <Route path="/dashboard/forms/:formId/preview" element={<FormPreview />} />
             <Route path="/dashboard/forms/:formId/responses" element={<FormResponses />} />
             <Route path="/dashboard/forms/:formId/analytics" element={<FormAnalytics />} />
+            
+            {/* Route Aliases for direct /forms/:formId navigation */}
+            <Route path="/forms/:formId/builder" element={<FormBuilder />} />
+            <Route path="/forms/:formId/preview" element={<FormPreview />} />
+            <Route path="/forms/:formId/responses" element={<FormResponses />} />
+            <Route path="/forms/:formId/analytics" element={<FormAnalytics />} />
+
             <Route path="/dashboard/analytics" element={<UserAnalytics />} />
             <Route path="/dashboard/templates" element={<UserTemplates />} />
             <Route path="/dashboard/archived" element={<UserArchivedForms />} />

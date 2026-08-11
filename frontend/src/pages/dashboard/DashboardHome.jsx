@@ -252,7 +252,7 @@ export default function DashboardHome() {
                       key={fav.id}
                       className="p-3.5 rounded-xl border border-surface-800 bg-surface-950/40 flex justify-between items-center gap-2 hover:border-brand-500/30 transition-all"
                     >
-                      <Link to={`/forms/${fav.id}/builder`} className="truncate">
+                      <Link to={`/dashboard/forms/${fav.id}/builder`} className="truncate">
                         <span className="font-semibold text-slate-200 hover:text-brand-400 text-xs block truncate">
                           {fav.title}
                         </span>
