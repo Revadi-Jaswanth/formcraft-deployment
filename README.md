@@ -17,6 +17,15 @@ FormCraft is an enterprise-grade low-code platform designed for building, versio
 
 ---
 
+## 🔐 Role-Based Access Control Architecture
+
+FormCraft enforces role-based access control (RBAC) to separate administrative governance from user workspace privacy:
+
+- **System Administrator (`admin` role)**: Accesses the central **Admin System Console** (`/admin`) to oversee global platform health, manage all user registrations, inspect global form registries, monitor system-wide audit logs, and configure data retention policies.
+- **Workspace Users (`user` role)**: Access an isolated **User SaaS Workspace** (`/dashboard`) displaying exclusively their own form templates, field schemas, respondent submissions, rule flow visualizers, and visual Recharts analytics.
+
+---
+
 ## 🏗️ Architecture & Folder Structure
 
 ```
