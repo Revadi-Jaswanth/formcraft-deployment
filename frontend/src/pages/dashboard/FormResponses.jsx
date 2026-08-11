@@ -358,6 +358,7 @@ export default function FormResponses() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [selectedSub, setSelectedSub] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const limit = 20;
 
   const handleFilterChange = (patch) => {
@@ -456,7 +457,6 @@ export default function FormResponses() {
     );
   }
 
-  const [selectedIds, setSelectedIds] = useState([]);
 
   const toggleSelectAll = () => {
     if (selectedIds.length === submissions.length) {

@@ -60,6 +60,8 @@ export default function App() {
             <Route path="/dashboard/forms/:formId/builder" element={<FormBuilder />} />
             <Route path="/dashboard/forms/:formId/preview" element={<FormPreview />} />
             <Route path="/dashboard/forms/:formId/responses" element={<FormResponses />} />
+            <Route path="/dashboard/responses" element={<FormResponses />} />
+            <Route path="/responses" element={<FormResponses />} />
             <Route path="/dashboard/forms/:formId/analytics" element={<FormAnalytics />} />
             
             {/* Route Aliases for direct /forms/:formId navigation */}
