@@ -30,11 +30,11 @@ export default function Login() {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      await login(data.email, data.password);
+      const res = await login(data.email, data.password);
       toast.success("Successfully logged in!");
-      // Redirect to original page or dashboard
-      const from = location.state?.from?.pathname || "/dashboard";
-      navigate(from, { replace: true });
+      const userRole = res?.user?.role || (data.email.includes("admin") ? "admin" : "user");
+      const targetPath = userRole === "admin" ? "/admin" : "/dashboard";
+      navigate(targetPath, { replace: true });
     } catch (err) {
       toast.error(err.message || "Invalid credentials.");
     } finally {
