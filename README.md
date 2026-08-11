@@ -17,6 +17,15 @@ FormCraft is an enterprise-grade low-code platform designed for building, versio
 
 ---
 
+## 🔑 Demo Access & Login Credentials
+
+| Role | Email | Password | Target Portal | Access & Features |
+|---|---|---|---|---|
+| **Workspace User** | `revadijaswanth@gmail.com` | `123456` | `http://localhost:5173/dashboard` | Form Creation, Builder, Recharts Analytics, Response Browser, CSV/JSON Exports |
+| **System Admin** | `admin@formcraft.com` | `admin123` | `http://localhost:5173/admin` | System Metrics, User Management, Global Forms Registry, Audit Trail, Data Retention Policy |
+
+---
+
 ## 🏗️ Architecture & Folder Structure
 
 ```
@@ -30,6 +39,7 @@ Low code dynamic form/
 │   │   ├── schemas/          # Pydantic v2 Schemas & DTOs
 │   │   └── services/         # Business Logic (RuleEngine, ValidationEngine, FormService, SubmissionService)
 │   ├── alembic/              # Database Schema Migrations
+│   ├── tests/                # Automated Pytest & E2E Integration Suite (test_e2e_full_lifecycle.py)
 │   ├── uploads/              # File Upload Storage Directory
 │   ├── Dockerfile
 │   └── requirements.txt
@@ -81,7 +91,7 @@ The project is **100% Complete**, fulfilling all 21 Days of the 3-Milestone Inte
 - **Day 18**: Form duplication (`POST /forms/{id}/duplicate`) & Interactive Rule Flow Graph visualizer (`RuleVisualizerGraph.jsx`).
 - **Day 19**: Data Retention Policy auto-purge, bulk submission deletion with audit logging, and `audit_logs` table.
 - **Day 20**: OpenAPI Swagger metadata polish, Docker Compose verification, and cross-app navigation pass.
-- **Day 21**: Automated 16-step E2E Python integration test suite & final demo walkthrough verification.
+- **Day 21**: Automated 16-step E2E Python integration test suite (`test_e2e_full_lifecycle.py`) & final verification pass.
 
 ---
 
@@ -201,9 +211,9 @@ npm run dev
 
 ### Running Automated E2E Integration Test Suite
 ```bash
-python scratch/test_e2e_full_lifecycle.py
+python backend/tests/test_e2e_full_lifecycle.py
 ```
-*Executes 16 automated end-to-end integration test scenarios validating the full platform lifecycle.*
+*Executes 16 automated end-to-end integration test scenarios validating the full platform lifecycle with 100% green `[PASS]` output.*
 
 ### Running Frontend Production Build Check
 ```bash
