@@ -17,15 +17,6 @@ FormCraft is an enterprise-grade low-code platform designed for building, versio
 
 ---
 
-## 🔑 Demo Access & Login Credentials
-
-| Role | Email | Password | Target Portal | Access & Features |
-|---|---|---|---|---|
-| **Workspace User** | `revadijaswanth@gmail.com` | `123456` | `http://localhost:5173/dashboard` | Form Creation, Builder, Recharts Analytics, Response Browser, CSV/JSON Exports |
-| **System Admin** | `admin@formcraft.com` | `admin123` | `http://localhost:5173/admin` | System Metrics, User Management, Global Forms Registry, Audit Trail, Data Retention Policy |
-
----
-
 ## 🏗️ Architecture & Folder Structure
 
 ```
