@@ -94,10 +94,6 @@ export default function Landing() {
         <div className="absolute top-1/3 left-1/3 w-[300px] h-[300px] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
         <div className="relative z-10 space-y-6 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-xs font-semibold text-brand-400 uppercase tracking-wider animate-pulse">
-            <Sparkles className="w-3.5 h-3.5" />
-            Milestone 2 Active Platform
-          </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-100 tracking-tight leading-[1.1] bg-clip-text text-transparent bg-gradient-to-b from-white via-slate-200 to-slate-400">
             Build Smart Forms. <br />
