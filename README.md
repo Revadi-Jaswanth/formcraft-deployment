@@ -17,6 +17,12 @@ FormCraft is an enterprise-grade low-code platform designed for building, versio
 
 ---
 
+## 🌐 Live Demo & Deployment
+
+The application is fully deployed and accessible online:
+**👉 [https://formcraft-saas-form-engine.vercel.app/](https://formcraft-saas-form-engine.vercel.app/)**
+
+---
 ## 🔐 Role-Based Access Control Architecture
 
 FormCraft enforces role-based access control (RBAC) to separate administrative governance from user workspace privacy:
