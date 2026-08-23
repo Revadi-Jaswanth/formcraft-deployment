@@ -14,8 +14,11 @@ export const setAccessToken = (token) => {
 
 export const getAccessToken = () => accessToken;
 
+const rawApiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const sanitizedBaseUrl = rawApiUrl.replace(/\/+$/, "").replace(/\/api\/v1$/, "");
+
 const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/api/v1`,
+  baseURL: `${sanitizedBaseUrl}/api/v1`,
   headers: {
     "Content-Type": "application/json",
   },
