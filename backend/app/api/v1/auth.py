@@ -55,8 +55,8 @@ def login(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,  # Set to True in production
-        samesite="lax",
+        secure=True,  # Required for cross-site cookies
+        samesite="none", # Required for cross-site cookies
         max_age=7 * 24 * 60 * 60,  # 7 days
     )
     
@@ -73,7 +73,12 @@ def login(
 def logout(
     response: Response,
 ):
-    response.delete_cookie(key="refresh_token")
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=True,
+        samesite="none"
+    )
     return {"message": "Successfully logged out."}
 
 # ==========================================
@@ -127,8 +132,8 @@ def refresh(
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=True,
+        samesite="none",
         max_age=7 * 24 * 60 * 60,
     )
     
