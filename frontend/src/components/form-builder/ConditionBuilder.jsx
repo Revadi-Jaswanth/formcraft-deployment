@@ -135,15 +135,37 @@ export default function ConditionBuilder({ formId, fields }) {
           {/* Value */}
           <div>
             <label className="label text-xs font-semibold">Compare Value</label>
-            <input
-              className="input text-xs py-2"
-              placeholder={
-                noValueOperators.includes(form.operator) ? "(not needed)" : "Enter value..."
+            {(() => {
+              const srcField = fields.find((f) => f.id === form.source_field_id);
+              const opts = srcField?.options || [];
+              if (opts.length > 0 && !noValueOperators.includes(form.operator)) {
+                return (
+                  <select
+                    className="select text-xs py-2"
+                    value={form.value}
+                    onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
+                  >
+                    <option value="">Select option…</option>
+                    {opts.map((opt) => (
+                      <option key={opt.id || opt.value} value={opt.value}>
+                        {opt.label} ({opt.value})
+                      </option>
+                    ))}
+                  </select>
+                );
               }
-              value={form.value}
-              disabled={noValueOperators.includes(form.operator)}
-              onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
-            />
+              return (
+                <input
+                  className="input text-xs py-2"
+                  placeholder={
+                    noValueOperators.includes(form.operator) ? "(not needed)" : "Enter value..."
+                  }
+                  value={form.value}
+                  disabled={noValueOperators.includes(form.operator)}
+                  onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
+                />
+              );
+            })()}
           </div>
 
           {/* Action */}

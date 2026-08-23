@@ -209,17 +209,22 @@ export default function FormRenderer({
 }
 
 function evaluateCondition(cond, value) {
-  const v = String(value ?? "").toLowerCase();
-  const cv = String(cond.value ?? "").toLowerCase();
+  const v = String(value ?? "").trim().toLowerCase();
+  const cv = String(cond.value ?? "").trim().toLowerCase();
+
+  // Normalize spaces & underscores so "Very Good" matches "very_good"
+  const vNorm = v.replace(/_/g, " ");
+  const cvNorm = cv.replace(/_/g, " ");
+
   switch (cond.operator) {
     case "equals":
-      return v === cv;
+      return v === cv || vNorm === cvNorm;
     case "not_equals":
-      return v !== cv;
+      return v !== cv && vNorm !== cvNorm;
     case "contains":
-      return v.includes(cv);
+      return v.includes(cv) || vNorm.includes(cvNorm);
     case "not_contains":
-      return !v.includes(cv);
+      return !v.includes(cv) && !vNorm.includes(cvNorm);
     case "greater_than":
       return Number(v) > Number(cv);
     case "less_than":
@@ -228,8 +233,10 @@ function evaluateCondition(cond, value) {
       return !value || v === "";
     case "is_not_empty":
       return !!value && v !== "";
-    case "in":
-      return cv.split(",").map((s) => s.trim()).includes(v);
+    case "in": {
+      const inList = cvNorm.split(",").map((s) => s.trim());
+      return inList.includes(v) || inList.includes(vNorm);
+    }
     default:
       return false;
   }
